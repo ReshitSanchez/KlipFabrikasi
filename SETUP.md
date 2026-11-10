@@ -40,7 +40,7 @@ keser, altyazı ekler, yükler. Siz sadece Telegram'dan gelen raporları okursun
 
 | Ne | Nereden | Ücret |
 |---|---|---|
-| Hetzner sunucu | Zaten var | – |
+| Sunucu (Contabo Cloud VPS 6 önerilir) | contabo.com | ~7 €/ay |
 | Twitch geliştirici uygulaması | dev.twitch.tv | Ücretsiz |
 | Kick geliştirici uygulaması | kick.com | Ücretsiz |
 | YouTube arama anahtarı (1 Google Cloud projesi) | console.cloud.google.com | Ücretsiz |
@@ -54,7 +54,7 @@ Toplam kurulum süresi: yaklaşık **2–3 saat** (çoğu, Google hesaplarını 
 
 ## 2. Sunucuya bağlanma
 
-Hetzner panelinde sunucunuzun **IP adresini** bulun (ör. `65.21.xxx.xxx`).
+Sunucu sağlayıcınızın (Contabo) gönderdiği e-postada veya panelinde sunucunuzun **IP adresini** bulun (ör. `65.21.xxx.xxx`).
 
 **Windows:** Başlat menüsüne `PowerShell` yazın, açın.
 **Mac:** `Terminal` uygulamasını açın.
@@ -66,7 +66,7 @@ ssh root@SUNUCU_IP
 ```
 
 - İlk seferde "Are you sure you want to continue connecting?" sorusuna `yes` yazıp Enter'a basın.
-- Şifre isterse Hetzner'in size e-postayla verdiği şifreyi yazın (yazarken ekranda görünmez, normal).
+- Şifre isterse siparişte belirlediğiniz (veya e-postayla gelen) root şifresini yazın (yazarken ekranda görünmez, normal).
 
 Ekranda `root@...:~#` gibi bir satır görüyorsanız sunucudasınız. ✅
 
@@ -608,7 +608,7 @@ Program size kendiliğinden yazar:
 | Genel kontrol | `docker compose run --rm tools python -m fabrika check` |
 | Sunucu bilgisi | `docker compose run --rm tools python -m fabrika sysinfo` |
 
-Sunucuyu Hetzner panelinden yeniden başlatırsanız program kendiliğinden açılır.
+Sunucuyu sağlayıcının panelinden yeniden başlatırsanız program kendiliğinden açılır.
 
 ---
 
