@@ -254,8 +254,11 @@ def process_segment(seg) -> int:
             db.alert("💸 Günlük API bütçesi doldu; yeni klip puanlaması yarına kaldı.", key="budget", dedupe_hours=12)
             break
         win = float(cfg.get("dedupe_window_s", 60))
-        if db.one("SELECT 1 FROM clips WHERE stream_id=? AND ABS(peak_ts-?)<?", (seg["stream_id"], c["time"], win)):
-            continue
+        if db.one("SELECT 1 FROM clips WHERE stream_id=? AND ABS(peak_ts-?)<? AND status<>'failed'",
+                  (seg["stream_id"], c["time"], win)):
+            continue  # aynı an zaten işlendi (hata alan denemeler tekrar denenebilir)
+        db.execute("DELETE FROM clips WHERE stream_id=? AND ABS(peak_ts-?)<? AND status='failed'",
+                   (seg["stream_id"], c["time"], win))
         cid = db.execute("INSERT INTO clips(stream_id,segment_id,peak_ts,signals,status,created_at) "
                          "VALUES(?,?,?,?, 'candidate', ?)",
                          (seg["stream_id"], seg["id"], c["time"], db.dumps(c["signals"]), time.time()))
