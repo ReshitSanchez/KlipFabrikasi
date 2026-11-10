@@ -24,8 +24,12 @@ def _groq(audio: Path) -> dict:
     key = config.env("GROQ_API_KEY")
     if not key:
         raise RuntimeError("GROQ_API_KEY yok")
-    model = config.get("transcription.groq_model", "whisper-large-v3-turbo")
-    for attempt in range(3):
+    from .llm import model_override, pick_available, set_model_override
+
+    configured = config.get("transcription.groq_model", "whisper-large-v3-turbo")
+    model = model_override("whisper") or configured
+    switched = False
+    for attempt in range(4):
         with open(audio, "rb") as f:
             r = requests.post(
                 "https://api.groq.com/openai/v1/audio/transcriptions",
@@ -39,6 +43,13 @@ def _groq(audio: Path) -> dict:
         if r.status_code == 429 or r.status_code >= 500:
             time.sleep(10 * (attempt + 1))
             continue
+        if r.status_code in (400, 404) and not switched and "model" in r.text.lower():
+            new = pick_available("https://api.groq.com/openai/v1", key, model,
+                                 ["whisper-large-v3-turbo", "whisper-large-v3"], chat=False)
+            if new:
+                set_model_override("whisper", configured, new)
+                model, switched = new, True
+                continue
         r.raise_for_status()
         d = r.json()
         dur = ffprobe_duration(audio)

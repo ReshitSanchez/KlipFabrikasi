@@ -198,9 +198,9 @@ transcription:
 # ---------------------------------------------------------------------
 llm:
   base_url: "https://api.groq.com/openai/v1"
-  model: "llama-3.3-70b-versatile"
-  price_input_per_million: 0.59
-  price_output_per_million: 0.79
+  model: "openai/gpt-oss-120b"     # Groq'ta yoksa program uygun bir modeli kendisi seçer
+  price_input_per_million: 0.15
+  price_output_per_million: 0.75
   temperature: 0.4
 
 budget:

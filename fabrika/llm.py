@@ -36,10 +36,54 @@ def _extract_json(text: str) -> dict:
         raise
 
 
+# Ayardaki model sağlayıcıda yoksa (sağlayıcılar eski modelleri kaldırabiliyor) sırayla denenecek modeller
+PREFERRED_CHAT = [
+    "openai/gpt-oss-120b", "llama-3.3-70b-versatile", "meta-llama/llama-4-maverick-17b-128e-instruct",
+    "moonshotai/kimi-k2-instruct", "qwen/qwen3-32b", "meta-llama/llama-4-scout-17b-16e-instruct",
+    "openai/gpt-oss-20b", "llama-3.1-8b-instant",
+]
+_NOT_CHAT = ("whisper", "guard", "safeguard", "tts", "playai", "orpheus", "distil", "embed", "compound", "prompt-guard")
+
+
+def list_models(base: str, key: str) -> list[str]:
+    r = requests.get(f"{base}/models", headers={"Authorization": f"Bearer {key}"}, timeout=30)
+    r.raise_for_status()
+    return [m["id"] for m in r.json().get("data", []) if m.get("active", True)]
+
+
+def pick_available(base: str, key: str, configured: str, preferred: list[str], chat: bool = True) -> str | None:
+    """Ayardaki model yoksa sağlayıcıdaki uygun bir modeli seçer ve hatırlar."""
+    try:
+        ids = list_models(base, key)
+    except Exception as e:  # noqa: BLE001
+        log.warning("Model listesi alınamadı: %s", e)
+        return None
+    for m in preferred:
+        if m in ids and m != configured:
+            return m
+    if chat:
+        rest = [m for m in ids if not any(x in m.lower() for x in _NOT_CHAT) and m != configured]
+        return rest[0] if rest else None
+    return None
+
+
+def model_override(kind: str) -> str | None:
+    return db.kv_get(f"model_override:{kind}")
+
+
+def set_model_override(kind: str, configured: str, new: str) -> None:
+    db.kv_set(f"model_override:{kind}", new)
+    db.alert(f"🤖 '{configured}' modeli artık kullanılamıyor; otomatik olarak '{new}' modeline geçildi. "
+             f"Kalıcı yapmak için config.yaml'da ilgili model satırını '{new}' yapabilirsiniz.",
+             level="warning", key=f"model-{kind}-{new}", dedupe_hours=24 * 7)
+    log.warning("Model '%s' bulunamadı, '%s' kullanılıyor", configured, new)
+
+
 def chat_json(system: str, user: str, purpose: str = "llm", max_tokens: int = 1500, retries: int = 3) -> dict:
     """Sohbet modeline sorar, JSON nesnesi döndürür."""
     base = str(config.get("llm.base_url", "https://api.groq.com/openai/v1")).rstrip("/")
-    model = config.get("llm.model", "llama-3.3-70b-versatile")
+    configured = config.get("llm.model", "llama-3.3-70b-versatile")
+    model = model_override("chat") or configured
     body = {
         "model": model,
         "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
@@ -47,11 +91,32 @@ def chat_json(system: str, user: str, purpose: str = "llm", max_tokens: int = 15
         "max_tokens": max_tokens,
         "response_format": {"type": "json_object"},
     }
+    if "gpt-oss" in model:  # düşünen modeller: kısa düşünme, yanıta yer kalsın
+        body["reasoning_effort"] = "low"
+        body["max_tokens"] = max(max_tokens, 2000)
     last_err: Exception | None = None
-    for attempt in range(retries):
+    switched = False
+    for attempt in range(retries + 1):
         try:
             r = requests.post(f"{base}/chat/completions", json=body, timeout=120,
                               headers={"Authorization": f"Bearer {_key()}"})
+            if r.status_code in (400, 404) and not switched and (
+                    r.status_code == 404 or "model" in r.text.lower() and (
+                    "decommission" in r.text.lower() or "not found" in r.text.lower()
+                    or "does not exist" in r.text.lower())):
+                new = pick_available(base, _key(), model, PREFERRED_CHAT)
+                if new:
+                    set_model_override("chat", configured, new)
+                    body["model"] = model = new
+                    if "gpt-oss" in new:
+                        body["reasoning_effort"] = "low"
+                        body["max_tokens"] = max(max_tokens, 2000)
+                    else:
+                        body.pop("reasoning_effort", None)
+                    switched = True
+                    continue
+            if r.status_code >= 400 and r.status_code not in (429,) and r.status_code < 500:
+                log.warning("LLM %s yanıtı: %s", r.status_code, r.text[:300])
             if r.status_code == 429 or r.status_code >= 500:
                 wait = float(r.headers.get("retry-after", 0) or 0) or (5 * (attempt + 1))
                 log.warning("LLM %s, %ss bekleniyor", r.status_code, wait)
