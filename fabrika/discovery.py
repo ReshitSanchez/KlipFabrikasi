@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import time
 
-from . import config, db
+from . import config, db, schedule
 from .log import get as get_log
 from .platforms import kick, twitch, youtube
 from .utils import service_loop
@@ -70,6 +70,8 @@ def tick() -> float:
         if prev_mode is not None:
             db.alert(f"🎮 Kategori değişti: artık '{game['mode']}' ({game.get('twitch_name')}) taranıyor.",
                      level="info", key=f"mode-{game['mode']}", dedupe_hours=24 * 30)
+    if not schedule.recording_allowed(lead_minutes=10):
+        return 60  # toplu mod: kayıt saati değil ya da yarın için yeterli klip var
     now = time.time()
     for name in PLATFORMS:
         if not config.get(f"platforms.{name}.enabled", True):

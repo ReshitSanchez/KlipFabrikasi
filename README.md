@@ -17,6 +17,10 @@ GTA 6 (test için GTA 5) canlı yayınlarından **tamamen otomatik** olarak dike
 | 7 | `guardian` | Telif → kara liste + tüm kanallardan silme, kanal kaybı, servis sağlığı, disk |
 | – | `reporter` | Telegram: anlık uyarılar + günlük rapor (izlenme, abone, gelir, maliyet) |
 
+**Toplu mod (varsayılan, ucuz sunucu için):** akşam 20:00–02:00 arası tek yayın kaydedilir, yeterli klip bulununca durur,
+gece kurgulanır, 05:00'te hepsi tek seferde yüklenir ve YouTube her videoyu ülkenin yoğun saatinde kendisi yayınlar
+(`config.yaml` → `schedule`). Güçlü sunucuda `continuous` moduyla 7/24 çalışır.
+
 Tüm ayarlar `config.yaml`, tüm anahtarlar `.env` içinde. Tüm durum `data/fabrika.sqlite3` veritabanında.
 
 ## Komutlar

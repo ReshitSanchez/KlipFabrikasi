@@ -9,7 +9,7 @@ import subprocess
 import time
 from datetime import datetime, timezone
 
-from . import chat, config, db, housekeeping
+from . import chat, config, db, housekeeping, schedule
 from .log import get as get_log
 from .utils import auto_concurrency, ffprobe_duration, safe_name, service_loop
 
@@ -107,6 +107,15 @@ def _finish(rec: Recording, status: str) -> None:
 def tick() -> float:
     now = time.time()
     limit = auto_concurrency()
+    if not schedule.recording_allowed():
+        # Toplu mod: kayıt saati bitti ya da yarın için yeterli klip bulundu -> kaydı durdur
+        if _active:
+            reason = "yeterli klip bulundu" if schedule.target_reached() else "kayıt saati bitti"
+            log.info("Toplu mod: kayıtlar durduruluyor (%s)", reason)
+            for rec in list(_active.values()):
+                _finish(rec, "live")
+        housekeeping.cleanup()
+        return 60
 
     # Mevcut kayıtları kontrol et
     for sid, rec in list(_active.items()):
@@ -133,7 +142,8 @@ def tick() -> float:
     # Boş yer varsa sıradaki en büyük yayını al
     if len(_active) < limit:
         free_slots = limit - len(_active)
-        cands = db.query("SELECT * FROM streams WHERE status='live' ORDER BY viewers DESC LIMIT 50")
+        cands = db.query("SELECT * FROM streams WHERE status='live' AND last_seen_at>? ORDER BY viewers DESC LIMIT 50",
+                         (now - 900,))
         for row in cands:
             if free_slots <= 0:
                 break

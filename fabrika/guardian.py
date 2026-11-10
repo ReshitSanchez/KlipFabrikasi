@@ -113,7 +113,7 @@ def check_videos(ch: dict) -> None:
                 punish_streamer(r["platform"], r["slug"], r["display_name"],
                                 f"telif talebi ile {len(blocked)} ülkede engellendi")
             elif config.get("youtube.privacy") == "public" and st.get("privacyStatus") == "private" \
-                    and r["privacy"] != "private":
+                    and not (r["publish_at"] and r["publish_at"] > time.time() - 3600):
                 warn_privacy_lock(name)
 
 

@@ -132,3 +132,29 @@ def test_ass_no_overlap():
 
     spans = sorted((sec(l.split(",")[1]), sec(l.split(",")[2])) for l in ev)
     assert all(spans[i][1] <= spans[i + 1][0] + 1e-6 for i in range(len(spans) - 1))
+
+
+def test_batch_schedule():
+    from fabrika import schedule
+
+    tz = ZoneInfo("Europe/Istanbul")
+    w = ["20:00-02:00"]
+    assert schedule.in_windows(w, datetime(2026, 11, 20, 21, 0, tzinfo=tz))
+    assert schedule.in_windows(w, datetime(2026, 11, 21, 1, 30, tzinfo=tz))
+    assert not schedule.in_windows(w, datetime(2026, 11, 21, 5, 0, tzinfo=tz))
+    assert schedule.in_windows(w, datetime(2026, 11, 20, 19, 55, tzinfo=tz), lead_minutes=10)
+
+    now = datetime(2026, 11, 21, 5, 0, tzinfo=tz)
+    hi = schedule.next_slots({"upload_windows": ["17:00-20:00"], "daily_limit": 6}, now, 6)
+    assert len(hi) == 6 and all(s.day == 21 and 17 <= s.hour < 20 for s in hi)
+    es = schedule.next_slots({"upload_windows": ["01:00-05:00"], "daily_limit": 6}, now, 6)
+    assert len(es) == 6 and all(s.day == 22 and 1 <= s.hour < 5 for s in es)
+
+
+def test_batch_start():
+    from fabrika import uploader
+
+    tz = ZoneInfo("Europe/Istanbul")
+    assert uploader.batch_start(datetime(2026, 11, 21, 4, 59, tzinfo=tz)) is None
+    assert uploader.batch_start(datetime(2026, 11, 21, 7, 0, tzinfo=tz)).hour == 5
+    assert uploader.batch_start(datetime(2026, 11, 21, 12, 0, tzinfo=tz)) is None

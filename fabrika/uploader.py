@@ -4,9 +4,9 @@ from __future__ import annotations
 import json
 import shutil
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
-from . import config, db, youtube_api
+from . import config, db, schedule, youtube_api
 from .log import get as get_log
 from .utils import service_loop
 
@@ -77,12 +77,15 @@ def dry_run_copy(u, ch: dict) -> None:
     log.info("[DENEME] %s -> %s", ch["name"], base.with_suffix(".mp4"))
 
 
-def upload(u, ch: dict) -> None:
+def upload(u, ch: dict, publish_at: datetime | None = None) -> None:
+    """Videoyu yükler. publish_at verilirse video gizli yüklenir ve YouTube o saatte herkese açar."""
     from googleapiclient.errors import HttpError
     from googleapiclient.http import MediaFileUpload
 
     name = ch["name"]
     privacy = config.get("youtube.privacy", "private")
+    if privacy != "public":
+        publish_at = None  # test (gizli) modunda zamanlama yok
     body = {
         "snippet": {
             "title": u["title"], "description": u["description"], "tags": json.loads(u["tags"] or "[]"),
@@ -93,6 +96,9 @@ def upload(u, ch: dict) -> None:
     clip = db.one("SELECT source_language FROM clips WHERE id=?", (u["clip_id"],))
     if clip and clip["source_language"]:
         body["snippet"]["defaultAudioLanguage"] = clip["source_language"]
+    if publish_at:
+        body["status"]["privacyStatus"] = "private"
+        body["status"]["publishAt"] = publish_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
     db.execute("UPDATE uploads SET status='uploading', attempts=attempts+1 WHERE id=?", (u["id"],))
     db.quota_add(name, int(config.get("youtube.upload_cost", 1600)))
     try:
@@ -127,11 +133,13 @@ def upload(u, ch: dict) -> None:
 
     vid = resp.get("id")
     got_privacy = (resp.get("status") or {}).get("privacyStatus", privacy)
-    db.execute("UPDATE uploads SET status='uploaded', youtube_id=?, privacy=?, uploaded_at=?, error=NULL WHERE id=?",
-               (vid, got_privacy, time.time(), u["id"]))
+    db.execute("UPDATE uploads SET status='uploaded', youtube_id=?, privacy=?, uploaded_at=?, publish_at=?, "
+               "error=NULL WHERE id=?",
+               (vid, got_privacy, time.time(), publish_at.timestamp() if publish_at else None, u["id"]))
     db.channel_ok(name)
-    log.info("YÜKLENDİ %s: https://youtube.com/shorts/%s (%s)", name, vid, got_privacy)
-    if privacy == "public" and got_privacy != "public":
+    when = f", yayın saati {publish_at:%d.%m %H:%M}" if publish_at else ""
+    log.info("YÜKLENDİ %s: https://youtube.com/shorts/%s (%s%s)", name, vid, got_privacy, when)
+    if privacy == "public" and got_privacy != "public" and not publish_at:
         warn_privacy_lock(name)
 
 
@@ -159,9 +167,55 @@ def channel_lost(name: str, reason: str) -> None:
                  level="error", key=f"lost-{name}", dedupe_hours=24)
 
 
+def batch_start(now: datetime) -> datetime | None:
+    """Bugünkü toplu yükleme saati geldiyse o anı döndürür (6 saat boyunca geç kalanlar da yüklenir)."""
+    hh, mm = map(int, str(config.get("schedule.upload_time", "05:00")).split(":"))
+    for off in (0, -1):
+        start = (now + timedelta(days=off)).replace(hour=hh, minute=mm, second=0, microsecond=0)
+        if start <= now < start + timedelta(hours=6):
+            return start
+    return None
+
+
+def batch_tick(now: datetime) -> None:
+    """Toplu mod: günde bir kez, kanal başına günlük limit kadar videoyu art arda yükler.
+    Her video, kanalın yoğun saatlerine dağıtılmış bir 'yayınlanma saati' (publishAt) ile yüklenir."""
+    start = batch_start(now)
+    if not start:
+        return
+    need = int(config.get("youtube.upload_cost", 1600)) + int(config.get("youtube.quota_reserve", 300))
+    for ch in config.channels():
+        name = ch["name"]
+        if not db.channel_enabled(name):
+            continue
+        limit = int(ch.get("daily_limit", 6))
+        done = db.query("SELECT publish_at FROM uploads WHERE channel=? AND status='uploaded' AND uploaded_at>=?",
+                        (name, start.timestamp()))
+        if len(done) >= limit:
+            continue
+        used = {round(r["publish_at"] or 0) for r in done}
+        slots = [s for s in schedule.next_slots(ch, now, limit * 2) if round(s.timestamp()) not in used]
+        for slot in slots[: limit - len(done)]:
+            if db.quota_remaining(name) < need:
+                db.alert(f"📉 '{name}' kotası bugün için yetersiz; kalan videolar {db.next_quota_reset():%d.%m %H:%M} "
+                         f"(TR) sonrasına kaldı.", key=f"quota-{name}-{db.pacific_day()}", dedupe_hours=20)
+                break
+            u = pick_next(name)
+            if not u:
+                break  # kurgu henüz bitmediyse sonraki turda tekrar denenir
+            upload(u, ch, slot)
+            if not db.channel_enabled(name):
+                break
+            if db.one("SELECT 1 FROM uploads WHERE id=? AND status='queued'", (u["id"],)):
+                break  # yükleme başarısız; 30 sn sonra yeniden denenir
+
+
 def tick() -> float:
     now = datetime.now(db.local_tz())
     dry = bool(config.get("general.dry_run", True))
+    if schedule.is_batch() and not dry:
+        batch_tick(now)
+        return 30
     for ch in config.channels():
         name = ch["name"]
         if dry:

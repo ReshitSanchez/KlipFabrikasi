@@ -16,6 +16,23 @@ general:
   log_level: "INFO"
 
 # ---------------------------------------------------------------------
+# ÇALIŞMA TAKVİMİ
+#   batch      = TOPLU MOD (ucuz/küçük sunucu için, önerilen):
+#                Sadece "record_windows" saatlerinde yayın kaydedilir. Yarın için yeterli klip
+#                ("clips_per_day") bulununca kayıt kendiliğinden durur. Kurgu arka planda biter.
+#                "upload_time" saatinde tüm videolar TEK SEFERDE yüklenir; YouTube her videoyu
+#                o kanalın "upload_windows" saatinde (ülkenin yoğun saati) kendisi yayınlar.
+#                Geri kalan zamanda sistem boşta bekler, ertesi gün aynı döngü tekrarlanır.
+#   continuous = 7/24 kayıt ve yükleme (güçlü sunucu için).
+# Saatler Türkiye saatidir.
+# ---------------------------------------------------------------------
+schedule:
+  mode: "batch"
+  record_windows: ["20:00-02:00"]   # Avrupa akşamı + Amerika öğleden sonrası: GTA yayınlarının yoğun saati
+  clips_per_day: 0                  # 0 = otomatik (en büyük günlük limit + 2). Her klip TÜM kanallara gider.
+  upload_time: "05:00"              # toplu yükleme saati (kurgu bitmemişse 6 saat boyunca tekrar dener)
+
+# ---------------------------------------------------------------------
 # OYUN KATEGORİSİ
 # Belirtilen tarihe kadar "test" kategorisi (GTA 5), sonrasında otomatik
 # olarak "main" kategorisi (GTA 6) kullanılır. Elle bir şey yapmanız gerekmez.
@@ -56,7 +73,8 @@ platforms:
 # YAYIN SEÇİMİ VE KAYIT
 # ---------------------------------------------------------------------
 streams:
-  # Aynı anda kaç yayın kaydedilsin. "auto" = sunucu gücüne göre program seçer.
+  # Aynı anda kaç yayın kaydedilsin. "auto" = sunucu gücüne göre program seçer
+  # (küçük sunucuda otomatik olarak 1 olur).
   max_concurrent: auto
   max_auto: 6                 # "auto" seçiliyse en fazla bu kadar
   min_viewers: 30             # bundan az izleyicili yayınlar alınmaz

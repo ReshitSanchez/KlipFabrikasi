@@ -97,6 +97,7 @@ CREATE TABLE IF NOT EXISTS uploads (
     created_at REAL,
     uploaded_at REAL,
     last_checked_at REAL,
+    publish_at REAL,
     UNIQUE(clip_id, channel)
 );
 CREATE INDEX IF NOT EXISTS idx_uploads_status ON uploads(channel, status);
@@ -188,6 +189,9 @@ def init() -> None:
     conn = connect()
     try:
         conn.executescript(SCHEMA)
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(uploads)")}
+        if "publish_at" not in cols:  # eski veritabanlarını güncelle
+            conn.execute("ALTER TABLE uploads ADD COLUMN publish_at REAL")
     finally:
         conn.close()
     _initialized = True

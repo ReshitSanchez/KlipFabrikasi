@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy as np
 
-from . import config, db, llm
+from . import config, db, llm, schedule
 from .log import get as get_log
 from .transcribe import transcribe
 from .utils import audio_db_per_second, auto_concurrency, ffprobe_duration, run, service_loop
@@ -199,6 +199,8 @@ def ready_segments() -> list:
 
 
 def drop_backlog(rows: list) -> list:
+    if schedule.is_batch():
+        return rows  # toplu modda acele yok; disk dolarsa disk koruması eskileri siler
     max_b = int(config.get("highlights.max_backlog_segments", 0) or 0) or auto_concurrency() * 3
     if len(rows) <= max_b:
         return rows
@@ -223,6 +225,8 @@ def process_segment(seg) -> int:
 
     made = 0
     for c in cands:
+        if schedule.is_batch() and schedule.target_reached():
+            break  # yarın için yeterli klip var; boşuna API harcama
         if not db.budget_ok():
             db.alert("💸 Günlük API bütçesi doldu; yeni klip puanlaması yarına kaldı.", key="budget", dedupe_hours=12)
             break

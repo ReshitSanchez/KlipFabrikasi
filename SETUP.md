@@ -96,6 +96,47 @@ Program, aynı anda kaç yayın kaydedeceğini bu bilgilere göre **kendisi** se
 | 8 çekirdek / 16 GB | 4 |
 | 16 çekirdek / 32 GB | 6 |
 
+### 💰 Ucuz sunucu (5–10 €/ay) ile çalıştırma — "toplu mod"
+
+Program **varsayılan olarak toplu modda** (`config.yaml` → `schedule.mode: "batch"`) gelir ve küçük bir
+sunucuda rahat çalışır. Her gün kendiliğinden şu döngüyü yapar:
+
+| Saat (TR) | Ne olur |
+|---|---|
+| 20:00–02:00 | En büyük **1** yayını kaydeder. Yarın için yeterli klip (~8) bulununca kaydı **erken bitirir** |
+| Gece boyunca | Klipleri puanlar, 4 dile çevirir, videoları hazırlar |
+| 05:00 | Bütün videoları (kanal başına 6) **tek seferde** YouTube'a yükler |
+| Gün içinde | YouTube her videoyu o ülkenin yoğun saatinde **kendisi** yayınlar (Hindistan 17–20, Japonya 13–16...) |
+| Geri kalan zaman | Sistem boşta bekler, akşam döngü tekrar başlar |
+
+Neden yeterli: Bir klip 4 kanalın hepsine gider. Yani günde 24 video için sadece **6–8 iyi klip**
+gerekir. Bu da tek bir yayının 1–3 saatinden kolayca çıkar.
+
+**Hangi sunucu?** Hetzner Cloud'da sipariş edilebilen en ucuz paketlerden birini seçin.
+Satın almadan önce özelliklerine bakın:
+- **En az 2 GB RAM** (4 GB daha rahat), **en az 40 GB disk**, işlemci 1–2 çekirdek yeterli
+- İşletim sistemi: **Ubuntu 24.04**, konum: Almanya veya Finlandiya
+
+Kasım 2026 itibarıyla en ucuz sipariş edilebilen paket **CPX02** (~6 €/ay) görünüyor; CX23 ve CAX11
+çoğu zaman stokta yok. Fiyatlar ve stok sık değiştiği için Hetzner sayfasından kontrol edin.
+
+> ⚠️ Hetzner bulut sunucuları **kapalıyken de ücretlendirilir.** Bu yüzden sunucuyu kapatmayın;
+> program boş saatlerde zaten neredeyse hiç kaynak kullanmaz.
+
+**Küçük sunucuda mutlaka yapın — takas alanı (swap):** RAM yetmediğinde programın çökmesini önler.
+Sunucuya bağlanınca bir kez çalıştırın:
+
+```bash
+fallocate -l 4G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
+free -h
+```
+
+`free -h` çıktısında `Swap:` satırında `4.0Gi` görmelisiniz.
+
+Güçlü bir sunucu alırsanız `schedule.mode: "continuous"` yaparak 7/24 kayıt ve saat saat yükleme
+moduna geçebilirsiniz.
+
 ---
 
 ## 4. Docker ve Git kurulumu
@@ -244,6 +285,10 @@ görünecek, bu normal — onları 10. adımda yapacağız.
 `config.yaml` şu an zaten **deneme modunda** (`dry_run: true`): hiçbir şey YouTube'a yüklenmez,
 hazır videolar `output/test/` klasörüne konur. 19 Kasım 2026'dan önce program otomatik olarak
 **GTA 5** yayınlarıyla çalışır.
+
+> ⏰ **Toplu modda kayıt sadece 20:00–02:00 arasında yapılır.** Testi hemen görmek isterseniz
+> `nano config.yaml` ile `record_windows: ["20:00-02:00"]` satırını geçici olarak
+> `record_windows: ["00:00-23:59"]` yapın. Test bitince eski hâline getirmeyi unutmayın.
 
 Sistemi başlatın:
 
@@ -400,8 +445,10 @@ nano config.yaml
 1. `general:` altında `dry_run: true` → `dry_run: false`
 2. `youtube:` altında `privacy: "private"` olduğundan emin olun.
 3. `channels:` altında test etmediğiniz üç kanalın `enabled: true` satırını `enabled: false` yapın.
-4. Beklememek için test edeceğiniz kanalın `upload_windows` satırını geçici olarak
-   `upload_windows: ["00:00-23:59"]` yapın.
+4. Beklememek için `schedule:` altındaki `upload_time: "05:00"` satırını, şu andan **5 dakika sonrası**
+   olarak değiştirin (ör. saat 14:20 ise `upload_time: "14:25"`). Klip hazır değilse önce 8. adımdaki
+   gibi bir test videosu işletin. (Toplu modda değil de `continuous` moddaysanız bunun yerine kanalın
+   `upload_windows` satırını geçici olarak `["00:00-23:59"]` yapın.)
 
 Kaydedip çıkın ve yeniden başlatın:
 
@@ -414,7 +461,7 @@ docker compose logs -f --tail 50 uploader
 (https://studio.youtube.com, o kanalın hesabıyla) girip videoyu kontrol edin: başlık, açıklama,
 altyazı, filigran doğru mu?
 
-Her şey yolundaysa `upload_windows` satırını eski hâline getirin ve diğer kanalları tekrar
+Her şey yolundaysa `upload_time` (veya `upload_windows`) satırını eski hâline getirin ve diğer kanalları tekrar
 `enabled: true` yapın.
 
 ---
@@ -488,6 +535,10 @@ Yükleme saatleri (Türkiye saati) `config.yaml` → her kanalın `upload_window
 | Japonya | 13:00–16:00 |
 | İspanyolca | 01:00–05:00 |
 | Brezilya | 00:00–03:00 |
+
+Toplu modda videolar sabah 05:00'te hep birlikte yüklenir ama **yukarıdaki saatlere kadar gizli
+kalır**; YouTube her birini bu saatlerde kendisi herkese açar. YouTube Studio'da bunları
+*"Planlandı"* olarak görürsünüz, bu normaldir.
 
 ---
 
