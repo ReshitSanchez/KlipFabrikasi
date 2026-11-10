@@ -2,6 +2,7 @@
 kanal erişim kaybı -> devre dışı bırakma, servis sağlığı, disk."""
 from __future__ import annotations
 
+import json
 import time
 
 from . import config, db, housekeeping, youtube_api
@@ -54,6 +55,16 @@ def punish_streamer(platform: str, slug: str, display: str, why: str) -> None:
     rows = db.query("SELECT u.* FROM uploads u JOIN clips c ON c.id=u.clip_id JOIN streams s ON s.id=c.stream_id "
                     "WHERE lower(s.platform)=? AND lower(s.slug)=? AND u.status IN ('uploaded','queued')",
                     (platform.lower(), slug.lower()))
+    # Bu yayıncının klibini içeren "Top N" derlemeleri de silinir
+    own = {r["id"] for r in db.query("SELECT c.id FROM clips c JOIN streams s ON s.id=c.stream_id "
+                                     "WHERE lower(s.platform)=? AND lower(s.slug)=?", (platform.lower(), slug.lower()))}
+    for c in db.query("SELECT id, signals FROM clips WHERE status='compilation'"):
+        try:
+            src = set(json.loads(c["signals"] or "{}").get("sources", []))
+        except ValueError:
+            src = set()
+        if src & own:
+            rows += db.query("SELECT * FROM uploads WHERE clip_id=? AND status IN ('uploaded','queued')", (c["id"],))
     deleted = 0
     for u in rows:
         if u["status"] == "queued":

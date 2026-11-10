@@ -4,7 +4,8 @@ GTA 6 (test için GTA 5) canlı yayınlarından **tamamen otomatik** olarak dike
 üreten ve Hintçe, Japonca, İspanyolca, Portekizce kanallara yükleyen sistem.
 
 👉 **Kurulum için: [SETUP.md](SETUP.md)** (Türkçe, adım adım)  
-🔎 **Araştırma ve kurgu/pazarlama kuralları: [docs/ARASTIRMA.md](docs/ARASTIRMA.md)**
+🔎 **Araştırma ve kurgu/pazarlama kuralları: [docs/ARASTIRMA.md](docs/ARASTIRMA.md)**  
+🗂️ **Sonraki sürüm fikirleri: [docs/V2.md](docs/V2.md)**
 
 ## Nasıl çalışır?
 
@@ -13,7 +14,7 @@ GTA 6 (test için GTA 5) canlı yayınlarından **tamamen otomatik** olarak dike
 | 1 | `discovery` | Kick / Twitch / YouTube'da canlı yayınları bulur, izleyiciye göre sıralar |
 | 2 | `recorder` | En büyük N yayını 5 dk'lık parçalar hâlinde kaydeder + sohbeti kaydeder, diski temiz tutar |
 | 3 | `highlights` | Sohbet sıçraması, tepki emojileri ve ses yükselmesinden anları bulur; Whisper + LLM ile 1–10 puanlar |
-| 4–5 | `editor` | 9:16 kurgu (normal / bölünmüş ekran), her dile çeviri, kelime kelime altyazı, filigran, başlık |
+| 4–5 | `editor` | 9:16 tam ekran kurgu, her dile çeviri, kelime kelime altyazı, filigran, başlık + günlük **"Top 4" derleme** |
 | 6 | `uploader` | Ülkenin yoğun saatinde, kota içinde YouTube'a yükler (deneme modunda `output/test/`) |
 | 7 | `guardian` | Telif → kara liste + tüm kanallardan silme, kanal kaybı, servis sağlığı, disk |
 | – | `reporter` | Telegram: anlık uyarılar + günlük rapor (izlenme, abone, gelir, maliyet) |

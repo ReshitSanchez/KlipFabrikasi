@@ -128,11 +128,9 @@ clip:
 # KURGU
 # ---------------------------------------------------------------------
 editing:
-  # normal = oyun ortada büyük, yayıncı kamerası bulunursa üstte
-  # split  = üstte klip, altta assets/background/ içinden rastgele "tatmin edici" video
-  # Araştırma: GTA klipleri zaten görsel olarak yoğun; altlık videosu oyunu küçülttüğü için "normal" önerilir.
-  layout: "normal"
-  game_aspect: 1.25           # "normal" yerleşimde oyunun yanlardan ne kadar kırpılacağı
+  # Videolar tam ekran, doğrudan orijinal yayından: oyun büyük ve ortada (arkası aynı görüntünün bulanığı).
+  # Yayıncı kamerası bulunursa kamera üstte (%30), oyun altta (%70).
+  game_aspect: 1.25           # oyunun yanlardan ne kadar kırpılacağı (büyük sayı = daha az kırpma)
   # Kanallar arası çeşitlilik: her klip en fazla bu kadar kanala gider (aynı klibin 4 kanalda birden
   # yayınlanması spam / "tekrar kullanılan içerik" riskini artırır). 4 = her klip her kanala.
   channels_per_clip: 2
@@ -151,6 +149,16 @@ editing:
     seconds: 3
   outro:
     enabled: false            # true ise assets/outro/<kanal>.mp4 sona eklenir
+
+# ---------------------------------------------------------------------
+# "TOP N" DERLEME (ör. "En Çılgın 4 GTA 6 Yayın Anı")
+# Her kanal günde bir kez, o kanala giden en iyi anlardan geri sayımlı bir derleme yapar:
+# üstte büyük başlık, ortada oyun, solda numaralı liste; en iyi an en sonda.
+# ---------------------------------------------------------------------
+compilation:
+  enabled: true
+  moments: 4                  # kaç an (3-5 önerilir)
+  moment_seconds: 10          # her anın süresi (toplam 59 sn'yi geçmez)
 
 # ---------------------------------------------------------------------
 # ALTYAZI

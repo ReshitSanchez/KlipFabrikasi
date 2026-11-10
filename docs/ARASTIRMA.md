@@ -17,14 +17,14 @@ Program bu eksikliği kapatmak için **kendi verisinden öğrenen** bir döngüy
 
 ## 2. Kurgu
 - Kamera varsa: **kamera üstte ~%30, oyun altta ~%70 ve alanı tamamen dolduruyor.**
-- Kamera yoksa: oyun büyük ve ortada. Bölünmüş ekran (altta slime/parkur) GTA'da oyunu küçülttüğü için
-  varsayılan olmaktan çıkarıldı (hâlâ `layout: "split"` ile seçilebilir).
+- Kamera yoksa: oyun büyük ve ortada, tam ekran. Bölünmüş ekran (altta slime/parkur) tamamen kaldırıldı;
+  videolar doğrudan orijinal yayından.
 - Altyazı: kalın, konturlu, 1–3 kelimelik öbekler, o an söylenen kelime renkli ve kısa bir **"büyüme" efektiyle**.
 - **Japonya:** kelime kelime değil, ifade ifade gösterilen telop (テロップ) kültürü var.
 - Zirve anında hafif **yakınlaştırma (punch-in)** dikkat çekiyor.
 - Outro ve ilerleme çubuğu gereksiz; klip doruk anında bitmeli.
 
-**Programa eklendi:** Yeni kamera yerleşimi, zirve anında %12 yakınlaştırma (`editing.punch_in`),
+**Programa eklendi:** Yeni kamera yerleşimi, slime/bölünmüş ekranın kaldırılması, zirve anında %12 yakınlaştırma (`editing.punch_in`),
 altyazı büyüme efekti (`subtitles.pop_animation`), Japonca için ifade bazlı telop (`subtitles.word_highlight`),
 kanal başına farklı vurgu rengi, daha yüksek görüntü/ses kalitesi.
 

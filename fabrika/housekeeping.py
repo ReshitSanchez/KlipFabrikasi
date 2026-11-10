@@ -18,9 +18,10 @@ def cleanup() -> None:
         remove(r["path"])
         db.execute("UPDATE segments SET status='deleted' WHERE id=?", (r["id"],))
 
-    # 2) Bitmiş/elenmiş kliplerin ham dosyaları
-    for r in db.query("SELECT id, raw_path FROM clips WHERE raw_path IS NOT NULL AND status IN "
-                      "('rejected','edited','failed','duplicate') AND created_at<?", (now - 3600,)):
+    # 2) Bitmiş/elenmiş kliplerin ham dosyaları (kurgulananlar "Top N" derlemesi için 30 saat saklanır)
+    for r in db.query("SELECT id, raw_path FROM clips WHERE raw_path IS NOT NULL AND ("
+                      "(status IN ('rejected','failed','duplicate') AND created_at<?) OR "
+                      "(status='edited' AND created_at<?))", (now - 3600, now - 30 * 3600)):
         remove(r["raw_path"])
         db.execute("UPDATE clips SET raw_path=NULL WHERE id=?", (r["id"],))
 

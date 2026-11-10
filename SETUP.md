@@ -21,7 +21,7 @@ keser, altyazı ekler, yükler. Siz sadece Telegram'dan gelen raporları okursun
 6. [Anahtarları alma (.env dosyası)](#6-anahtarları-alma-env-dosyası)
 7. [Telegram botunu bağlama](#7-telegram-botunu-bağlama)
 8. [İlk test: GTA 5 ile deneme modu](#8-ilk-test-gta-5-ile-deneme-modu)
-9. [Filigran ve arka plan videoları](#9-filigran-ve-arka-plan-videoları)
+9. [Filigranlar](#9-filigranlar)
 10. [YouTube kanallarını bağlama (her kanal için bir kez)](#10-youtube-kanallarını-bağlama-her-kanal-için-bir-kez)
 11. [Tek kanal + gizli yükleme testi](#11-tek-kanal--gizli-yükleme-testi)
 12. [API denetimi (audit) — videolar gizli kilitlenirse](#12-api-denetimi-audit--videolar-gizli-kilitlenirse)
@@ -340,9 +340,8 @@ docker compose restart
 
 ---
 
-## 9. Filigran ve arka plan videoları
+## 9. Filigranlar
 
-### Filigranlar
 Her kanal için arka planı şeffaf bir PNG logo hazırlayın ve şu adlarla kaydedin:
 `hindistan.png`, `japonya.png`, `ispanyolca.png`, `brezilya.png`.
 Kendi bilgisayarınızdan, dosyaların olduğu klasörde:
@@ -353,16 +352,7 @@ scp *.png root@SUNUCU_IP:/root/klipfabrikasi/assets/watermarks/
 
 (PNG koymazsanız kanalın adı yazı olarak basılır.)
 
-### Arka plan videoları ("bölünmüş ekran" için)
-`config.yaml`'da `layout: "split"` seçiliyse videonun alt yarısında "tatmin edici" bir video oynar.
-**Telifsiz** veya **kendi çektiğiniz** videoları (.mp4) yükleyin:
-
-```bash
-scp *.mp4 root@SUNUCU_IP:/root/klipfabrikasi/assets/background/
-```
-
-Arka plan videosu yoksa program otomatik olarak `normal` yerleşime geçer (oyun ortada, arkası bulanık,
-yayıncı kamerası bulunursa üstte).
+Videolar her zaman **tam ekran**, doğrudan orijinal yayından hazırlanır (altta slime vb. arka plan videosu yok).
 
 ---
 

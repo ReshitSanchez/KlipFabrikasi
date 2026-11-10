@@ -15,7 +15,6 @@ from .utils import ffprobe_duration, ffprobe_video, has_audio, run, service_loop
 
 log = get_log("editor")
 
-VIDEO_EXT = (".mp4", ".mov", ".webm", ".mkv")
 AUDIENCE = {
     "hi": "India (Indian gamers searching YouTube; Hindi with natural English gaming words is fine)",
     "ja": "Japan (Japanese gamers; natural Japanese internet/gaming style)",
@@ -72,20 +71,15 @@ def detect_facecam(video: Path, start: float, length: float) -> tuple[int, int, 
     return x0 & ~1, y0 & ~1, cw & ~1, ch & ~1
 
 
-def pick_background() -> Path | None:
-    d = config.assets_dir() / "background"
-    files = [p for p in d.glob("*") if p.suffix.lower() in VIDEO_EXT] if d.exists() else []
-    return random.choice(files) if files else None
+BLUR_BG = ("scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=25:2,"
+           "eq=brightness=-0.08,setsar=1")
 
 
-def layout_graph(layout: str, cam: tuple | None, aspect: float) -> str:
-    bg = ("scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=25:2,"
-          "eq=brightness=-0.08,setsar=1")
+def layout_graph(cam: tuple | None, aspect: float) -> str:
+    """Tam ekran orijinal yayın: oyun büyük ve ortada (arkası aynı görüntünün bulanığı).
+    Yayıncı kamerası bulunursa kamera üstte, oyun altta."""
+    bg = BLUR_BG
     game = f"crop='min(iw,ih*{aspect})':ih,scale=1080:-2,setsar=1"
-    if layout == "split":
-        return ("[0:v]scale=1080:960:force_original_aspect_ratio=increase,crop=1080:960,setsar=1[top];"
-                "[1:v]scale=1080:960:force_original_aspect_ratio=increase,crop=1080:960,setsar=1[bot];"
-                "[top][bot]vstack=inputs=2[base]")
     if cam:
         x, y, w, h = cam
         # Araştırma: kamera üstte ~%30 (576 px), oyun altta ~%70 (1344 px) ve alanı tamamen doldurur
@@ -112,19 +106,13 @@ def punch_in_filter(peak: float | None, length: float) -> str:
     return f",scale=w='trunc(1080*(1+{z:.3f}*{env})/2)*2':h=-2:eval=frame,crop=1080:1920"
 
 
-def render(raw: Path, start: float, length: float, ass: Path, out: Path, layout: str, cam: tuple | None,
+def render(raw: Path, start: float, length: float, ass: Path, out: Path, cam: tuple | None,
            watermark: Path | None, outro: Path | None, peak: float | None = None) -> None:
     ec = config.get("editing", {}) or {}
     fps = int(ec.get("fps", 30))
     inputs = ["-ss", f"{start:.2f}", "-t", f"{length:.2f}", "-i", str(raw)]
     idx = 1
-    if layout == "split":
-        bgv = pick_background()
-        bdur = ffprobe_duration(bgv)
-        off = random.uniform(0, max(0.0, bdur - length - 1)) if bdur > length + 2 else 0
-        inputs += ["-stream_loop", "-1", "-ss", f"{off:.2f}", "-i", str(bgv)]
-        idx += 1
-    graph = layout_graph(layout, cam, float(ec.get("game_aspect", 1.25)))
+    graph = layout_graph(cam, float(ec.get("game_aspect", 1.25)))
     fontsdir = config.assets_dir() / "fonts"
     graph += f";[base]fps={fps}{punch_in_filter(peak, length)},ass='{_esc_filter_path(ass)}':fontsdir='{_esc_filter_path(fontsdir)}'[sub]"
     vout = "[sub]"
@@ -306,12 +294,7 @@ def edit_clip(clip) -> int:
     ec = config.get("editing", {}) or {}
     outro_on = bool((ec.get("outro") or {}).get("enabled"))
 
-    layout = ec.get("layout", "normal")
-    if layout == "split" and pick_background() is None:
-        db.alert("🎞️ 'split' yerleşim seçili ama assets/background/ klasöründe video yok; 'normal' kullanılıyor.",
-                 key="no-bg", dedupe_hours=24)
-        layout = "normal"
-    cam = detect_facecam(raw, start, end - start) if layout == "normal" else None
+    cam = detect_facecam(raw, start, end - start)
 
     work = config.data_dir() / "work" / f"clip_{clip['id']}"
     work.mkdir(parents=True, exist_ok=True)
@@ -348,7 +331,7 @@ def edit_clip(clip) -> int:
             out_dir = config.output_dir() / "ready" / name
             out_dir.mkdir(parents=True, exist_ok=True)
             out = out_dir / f"clip_{clip['id']}_{name}.mp4"
-            render(raw, start, length, ass, out, layout, cam, wm if wm.exists() else None, outro, peak)
+            render(raw, start, length, ass, out, cam, wm if wm.exists() else None, outro, peak)
             title, desc, tags = finalize_metadata(res, stream, ch)
             db.execute("INSERT OR IGNORE INTO uploads(clip_id,channel,video_path,title,description,tags,status,"
                        "created_at,comment_text) VALUES(?,?,?,?,?,?, 'queued', ?, ?)",
@@ -366,7 +349,9 @@ def edit_clip(clip) -> int:
 def tick() -> float:
     clip = db.one("SELECT * FROM clips WHERE status='accepted' ORDER BY score DESC, created_at DESC LIMIT 1")
     if not clip:
-        return 20
+        from . import compilation  # boştayken: günün "Top N" derlemesi
+
+        return 1 if compilation.maybe_make() else 20
     db.execute("UPDATE clips SET status='editing' WHERE id=?", (clip["id"],))
     try:
         edit_clip(clip)

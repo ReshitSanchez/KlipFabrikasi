@@ -6,8 +6,6 @@ secrets/tokens/*.json
 __pycache__/
 *.pyc
 .venv/
-assets/background/*
-!assets/background/README.md
 assets/outro/*
 !assets/outro/README.md
 assets/watermarks/*.png

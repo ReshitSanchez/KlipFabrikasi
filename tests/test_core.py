@@ -172,3 +172,14 @@ def test_punch_in_and_targets():
     assert editor.punch_in_filter(None, 30.0) == ""
     assert editor.punch_in_filter(29.9, 30.0) == ""
     assert schedule.clips_target() == 14  # 4 kanal x 6 / 2 kanal-klip + 2
+
+
+def test_compilation_ass():
+    from fabrika import compilation
+
+    ass = compilation.build_ass("Top 4 GTA", {4: "a 💀", 3: "b", 2: "c", 1: "d"}, {4: 0.0, 3: 10.0, 2: 20.0, 1: 30.0},
+                                4, 40.0, "es", False)
+    assert "Top 4 GTA" in ass
+    # 1. sıra: 30. saniyeye kadar sadece numara, sonra numara + yorum
+    assert "0:00:00.00,0:00:30.00,List" in ass and "0:00:30.00,0:00:41.00,List" in ass
+    assert ass.count(",List,") == 7  # 4. sıra baştan itibaren yorumuyla görünür

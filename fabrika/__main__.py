@@ -65,10 +65,6 @@ def cmd_check() -> None:
         line(sec.exists(), f"OAuth istemci dosyası: {ch.get('client_secret')}", "SETUP.md Adım 10.4")
         line(tok.exists(), f"Token: {ch.get('token')}", f"python -m fabrika auth {ch['name']}")
         line(wm.exists(), f"Filigran: {ch.get('watermark')}", "PNG eklenmezse kanal adı yazı olarak basılır")
-    bg = list((config.assets_dir() / "background").glob("*.mp4"))
-    print("\n🎞️ Arka plan videoları")
-    line(bool(bg) or config.get("editing.layout") != "split", f"{len(bg)} adet assets/background/*.mp4",
-         "'split' yerleşim için telifsiz video ekleyin")
     print("\nSonuç:", "her şey hazır ✅" if ok else "eksikler var (yukarıdaki ❌ satırları) ⚠️")
 
 
