@@ -112,18 +112,22 @@ sunucuda rahat çalışır. Her gün kendiliğinden şu döngüyü yapar:
 Neden yeterli: Bir klip 2 kanala gider. Yani günde 24 video için sadece **~12–14 iyi klip**
 gerekir. Bu da tek bir yayının 1–3 saatinden kolayca çıkar.
 
-**Hangi sunucu?** Hetzner Cloud'da sipariş edilebilen en ucuz paketlerden birini seçin.
-Satın almadan önce özelliklerine bakın:
-- **En az 2 GB RAM** (4 GB daha rahat), **en az 40 GB disk**, işlemci 1–2 çekirdek yeterli
-- İşletim sistemi: **Ubuntu 24.04**, konum: Almanya veya Finlandiya
+**Hangi sunucu?** Önerilen: **Contabo Cloud VPS 6** (6 çekirdek, 12 GB RAM, 100 GB NVMe, ~7 €/ay,
+kurulum ücreti yok). Sipariş ederken:
+- **Region:** European Union (Germany) · **Storage:** 100 GB NVMe · **Image:** Ubuntu 24.04
+- **Root şifresi** belirleyip not edin · **Add-on'ların hiçbirini almayın** (yedekleme, panel vb.)
+- Sözleşme süresine ve kurulum ücretine (setup fee) sipariş özetinde bakın.
 
-Kasım 2026 itibarıyla en ucuz sipariş edilebilen paket **CPX02** (~6 €/ay) görünüyor; CX23 ve CAX11
-çoğu zaman stokta yok. Fiyatlar ve stok sık değiştiği için Hetzner sayfasından kontrol edin.
+Contabo sunucuyu birkaç saat içinde hazırlar; IP adresi e-postayla gelir.
 
-> ⚠️ Hetzner bulut sunucuları **kapalıyken de ücretlendirilir.** Bu yüzden sunucuyu kapatmayın;
+Alternatif: Hetzner'de **CX33** (4 çekirdek, 8 GB) stokta varsa o da olur. **1 GB RAM'li paketleri
+(ör. CPX02) almayın**; program bu kadar RAM'le çalışmaz. Genel kural: en az 2 GB RAM (4 GB+ önerilir),
+en az 40 GB disk, Ubuntu 24.04.
+
+> ⚠️ Bulut sunucular **kapalıyken de ücretlendirilir.** Bu yüzden sunucuyu kapatmayın;
 > program boş saatlerde zaten neredeyse hiç kaynak kullanmaz.
 
-**Küçük sunucuda mutlaka yapın — takas alanı (swap):** RAM yetmediğinde programın çökmesini önler.
+**Takas alanı (swap) — önerilir, 4 GB'tan az RAM'de şart:** RAM yetmediğinde programın çökmesini önler.
 Sunucuya bağlanınca bir kez çalıştırın:
 
 ```bash
