@@ -251,6 +251,9 @@ Aşağıdaki anahtarları alıp **boşluk bırakmadan** yazın.
 
 Hepsini yazdıktan sonra `Ctrl + O`, `Enter`, `Ctrl + X` ile kaydedip çıkın.
 
+> ℹ️ Sistem çalışırken `.env`'yi değiştirirseniz yeni anahtarların okunması için
+> `docker compose up -d --force-recreate` çalıştırın (`restart` yetmez).
+
 > 🔐 `.env` dosyasını kimseyle paylaşmayın, ekran görüntüsünü almayın.
 
 ---
@@ -598,6 +601,7 @@ Program size kendiliğinden yazar:
 |---|---|
 | Bir servisin ne yaptığını görmek | `docker compose logs -f --tail 100 recorder` (servis adını değiştirin) |
 | Her şeyi yeniden başlatmak | `docker compose restart` |
+| `.env` dosyasını değiştirdim (yeni anahtar) | `docker compose up -d --force-recreate` (basit restart yeni anahtarları okumaz) |
 | Durdurmak / başlatmak | `docker compose down` / `docker compose up -d` |
 | Programı güncellemek | `git pull && docker compose build && docker compose up -d` |
 | Disk doldu | Program kendisi temizler. Elle: `docker compose down && rm -rf data/recordings data/clips && docker compose up -d` |

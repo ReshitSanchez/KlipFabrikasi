@@ -47,7 +47,8 @@ def cmd_check() -> None:
     for tool in ("ffmpeg", "ffprobe", "streamlink", "yt-dlp"):
         line(bool(shutil.which(tool)), tool, "Docker ile kurduysanız bu otomatik gelir")
     print("\n🔑 Anahtarlar (.env)")
-    for k, why in [("TWITCH_CLIENT_ID", "Twitch"), ("KICK_CLIENT_ID", "Kick"), ("YOUTUBE_API_KEY", "YouTube arama"),
+    for k, why in [("TWITCH_CLIENT_ID", "Twitch"), ("TWITCH_CLIENT_SECRET", "Twitch"),
+                   ("KICK_CLIENT_ID", "Kick"), ("KICK_CLIENT_SECRET", "Kick"), ("YOUTUBE_API_KEY", "YouTube arama"),
                    ("GROQ_API_KEY", "Whisper"), ("LLM_API_KEY", "LLM"), ("TELEGRAM_BOT_TOKEN", "Telegram")]:
         v = config.env(k) or (config.env("GROQ_API_KEY") if k == "LLM_API_KEY" else "")
         line(bool(v), f"{k} ({why})", "SETUP.md'deki ilgili adıma bakın; boşsa bu özellik kapalı kalır")
