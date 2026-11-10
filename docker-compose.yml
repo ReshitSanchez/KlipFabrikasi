@@ -1,0 +1,52 @@
+# Her modül ayrı bir servistir. Biri çökerse Docker onu otomatik yeniden başlatır (restart: always).
+x-fabrika: &fabrika
+  build: .
+  image: klipfabrikasi:latest
+  restart: always
+  env_file: .env
+  environment:
+    - TZ=Europe/Istanbul
+    - FABRIKA_HOME=/app
+  volumes:
+    - ./config.yaml:/app/config.yaml:ro
+    - ./data:/app/data
+    - ./output:/app/output
+    - ./assets:/app/assets:ro
+    - ./secrets:/app/secrets
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  discovery:
+    <<: *fabrika
+    command: ["python", "-m", "fabrika", "run", "discovery"]
+  recorder:
+    <<: *fabrika
+    command: ["python", "-m", "fabrika", "run", "recorder"]
+    stop_grace_period: 30s
+  highlights:
+    <<: *fabrika
+    command: ["python", "-m", "fabrika", "run", "highlights"]
+  editor:
+    <<: *fabrika
+    command: ["python", "-m", "fabrika", "run", "editor"]
+  uploader:
+    <<: *fabrika
+    command: ["python", "-m", "fabrika", "run", "uploader"]
+  guardian:
+    <<: *fabrika
+    command: ["python", "-m", "fabrika", "run", "guardian"]
+  reporter:
+    <<: *fabrika
+    command: ["python", "-m", "fabrika", "run", "reporter"]
+
+  # Tek seferlik komutlar için (servis olarak çalışmaz):
+  #   docker compose run --rm tools python -m fabrika check
+  tools:
+    <<: *fabrika
+    restart: "no"
+    profiles: ["tools"]
+    command: ["python", "-m", "fabrika"]

@@ -1,0 +1,8 @@
+.git
+.env
+data
+output
+secrets
+assets
+tests
+__pycache__

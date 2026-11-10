@@ -1,0 +1,16 @@
+.env
+data/
+output/
+secrets/client_secrets/*.json
+secrets/tokens/*.json
+__pycache__/
+*.pyc
+.venv/
+assets/background/*
+!assets/background/README.md
+assets/outro/*
+!assets/outro/README.md
+assets/watermarks/*.png
+assets/fonts/*
+!assets/fonts/README.md
+.pytest_cache/

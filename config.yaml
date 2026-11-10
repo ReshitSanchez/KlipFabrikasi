@@ -1,0 +1,230 @@
+# =====================================================================
+#  KLİP FABRİKASI - AYAR DOSYASI
+#  Bu dosyada GİZLİ ANAHTAR YOKTUR. Anahtarlar .env dosyasındadır.
+#  Değişiklikler servisler çalışırken de okunur (yeniden başlatmak gerekmez).
+#  "#" ile başlayan satırlar açıklamadır, program bunları okumaz.
+# =====================================================================
+
+general:
+  # true  = YouTube'a YÜKLEME YAPMA, hazır videoları output/test/ klasörüne koy (deneme modu)
+  # false = gerçekten YouTube'a yükle
+  dry_run: true
+  timezone: "Europe/Istanbul"   # yükleme saatleri bu saat dilimine göre yazılır (Türkiye saati)
+  data_dir: "data"              # kayıtlar, veritabanı, geçici dosyalar
+  output_dir: "output"          # hazır videolar
+  assets_dir: "assets"          # arka plan videoları, filigranlar, fontlar
+  log_level: "INFO"
+
+# ---------------------------------------------------------------------
+# OYUN KATEGORİSİ
+# Belirtilen tarihe kadar "test" kategorisi (GTA 5), sonrasında otomatik
+# olarak "main" kategorisi (GTA 6) kullanılır. Elle bir şey yapmanız gerekmez.
+# ---------------------------------------------------------------------
+game:
+  switch_to_main_at: "2026-11-19T00:00:00+03:00"
+  force: ""            # "test" veya "main" yazılırsa tarihe bakılmaz
+  test:
+    twitch_name: "Grand Theft Auto V"
+    kick_name: "Grand Theft Auto V"
+    youtube_query: "GTA 5 live"
+    hashtags: ["#shorts", "#GTA5"]
+  main:
+    twitch_name: "Grand Theft Auto VI"
+    kick_name: "Grand Theft Auto VI"
+    youtube_query: "GTA 6 live"
+    hashtags: ["#shorts", "#GTA6"]
+
+# ---------------------------------------------------------------------
+# PLATFORMLAR (true = açık, false = kapalı)
+# ---------------------------------------------------------------------
+platforms:
+  twitch:
+    enabled: true
+    scan_interval_s: 150        # 2,5 dakikada bir tara
+  kick:
+    enabled: true
+    scan_interval_s: 150
+    # Kick sohbetinin bağlandığı herkese açık Pusher anahtarı (Kick değiştirirse burası güncellenir)
+    pusher_app_key: "32cbd69e4b950bf97679"
+    pusher_cluster: "us2"
+  youtube:
+    enabled: true
+    scan_interval_s: 1500       # 25 dakikada bir (YouTube arama kotası pahalı)
+    max_results: 25
+
+# ---------------------------------------------------------------------
+# YAYIN SEÇİMİ VE KAYIT
+# ---------------------------------------------------------------------
+streams:
+  # Aynı anda kaç yayın kaydedilsin. "auto" = sunucu gücüne göre program seçer.
+  max_concurrent: auto
+  max_auto: 6                 # "auto" seçiliyse en fazla bu kadar
+  min_viewers: 30             # bundan az izleyicili yayınlar alınmaz
+  languages: []               # boş = tüm diller. Örn: ["en", "es"]
+  record_quality: "720p60,720p,best"
+  segment_seconds: 300        # kayıtlar 5 dakikalık parçalara bölünür
+  # Kara liste: bu yayıncılar asla kaydedilmez. Biçim: "platform:kullanıcıadı"
+  # Telif şikâyeti gelen yayıncılar veritabanına otomatik eklenir, buraya yazmanız gerekmez.
+  blacklist:
+    - "twitch:ornek_yayinci_adi"
+
+# ---------------------------------------------------------------------
+# DİSK
+# ---------------------------------------------------------------------
+disk:
+  max_used_percent: 80        # bunu geçerse en eski işlenmemiş kayıtlar silinir
+  target_used_percent: 72     # silme bu seviyeye inene kadar sürer
+  keep_rendered_days: 3       # yüklenmiş videolar kaç gün saklansın
+
+# ---------------------------------------------------------------------
+# ANI BULUCU (highlight)
+# ---------------------------------------------------------------------
+highlights:
+  chat_window_s: 10           # son 10 saniyedeki mesaj hızı...
+  chat_baseline_s: 120        # ...önceki 2 dakikanın ortalamasıyla karşılaştırılır
+  chat_spike_ratio: 3.0       # 3 katına çıkarsa aday an
+  chat_min_messages: 6        # 10 saniyede en az bu kadar mesaj olmalı
+  chat_reaction_delay_s: 6    # sohbet olaydan kaç saniye sonra tepki verir
+  reaction_min_ratio: 0.35    # mesajların bu kadarı tepki (KEKW, LUL, 😂...) ise aday
+  reaction_words: ["KEKW", "LUL", "LULW", "OMEGALUL", "LMAO", "LOL", "OMG", "WTF", "POG", "POGGERS",
+                   "PogChamp", "😂", "🤣", "💀", "😭", "😱", "JAJA", "KKKK", "XD", "W", "HAHA", "ICANT", "Kappa"]
+  audio_jump_db: 9            # ses, son 1 dakikanın ortancasından bu kadar dB yükselirse aday
+  max_candidates_per_segment: 3
+  candidate_pre_s: 35         # aday anın kaç saniye öncesi alınsın
+  candidate_post_s: 25        # kaç saniye sonrası alınsın
+  min_score: 7                # LLM puanı (1-10) bundan düşükse klip atılır
+  dedupe_window_s: 60         # aynı yayında bu kadar yakın iki an tek sayılır
+  max_backlog_segments: 0     # 0 = otomatik. İşlenmemiş parça birikirse eskileri atlanır
+
+clip:
+  min_seconds: 15
+  max_seconds: 59
+
+# ---------------------------------------------------------------------
+# KURGU
+# ---------------------------------------------------------------------
+editing:
+  # normal = oyun ortada büyük, yayıncı kamerası bulunursa üstte
+  # split  = üstte klip, altta assets/background/ içinden rastgele "tatmin edici" video
+  layout: "split"
+  game_aspect: 1.25           # "normal" yerleşimde oyunun yanlardan ne kadar kırpılacağı
+  preset: "veryfast"          # ffmpeg hızı
+  crf: 21                     # kalite (düşük = daha kaliteli, daha büyük dosya)
+  fps: 30
+  loudnorm: true              # ses seviyesini Shorts için dengele
+  watermark_width: 220
+  watermark_opacity: 0.85
+  banner:
+    enabled: true             # ilk saniyelerde üstte kısa merak uyandıran yazı
+    seconds: 3
+  outro:
+    enabled: false            # true ise assets/outro/<kanal>.mp4 sona eklenir
+
+# ---------------------------------------------------------------------
+# ALTYAZI
+# ---------------------------------------------------------------------
+subtitles:
+  position_y: 1180            # 1920 yüksekliğinde dikey konum (960 = tam orta)
+  font_size: 92
+  max_words: 3                # bir seferde ekranda en fazla kaç kelime
+  max_chars: 18
+  ja_max_chars: 10            # Japonca için bir satırdaki en fazla karakter
+  uppercase_latin: true       # İspanyolca/Portekizce altyazıyı BÜYÜK HARF yap
+  primary_color: "&H00FFFFFF" # beyaz (ASS renk biçimi &HAABBGGRR)
+  highlight_color: "&H0000E1FF" # sarı-turuncu (o an söylenen kelime)
+  outline_color: "&H00000000"
+  fonts:
+    default: "Montserrat"
+    hi: "Noto Sans Devanagari"
+    ja: "Noto Sans CJK JP"
+
+# ---------------------------------------------------------------------
+# YAZIYA DÖKME (Whisper)
+# ---------------------------------------------------------------------
+transcription:
+  provider: "groq"            # groq = hızlı API (önerilen), local = sunucuda faster-whisper
+  groq_model: "whisper-large-v3-turbo"
+  local_model: "small"        # local için: tiny / base / small / medium
+  price_per_hour_usd: 0.04
+
+# ---------------------------------------------------------------------
+# LLM (puanlama, çeviri, başlık). OpenAI uyumlu herhangi bir servis olur.
+# Varsayılan: Groq (Whisper ile aynı anahtar kullanılabilir).
+# ---------------------------------------------------------------------
+llm:
+  base_url: "https://api.groq.com/openai/v1"
+  model: "llama-3.3-70b-versatile"
+  price_input_per_million: 0.59
+  price_output_per_million: 0.79
+  temperature: 0.4
+
+budget:
+  daily_usd_limit: 0.70       # günlük API harcaması bunu geçerse yeni klip puanlaması ertesi güne kalır
+
+# ---------------------------------------------------------------------
+# YOUTUBE YÜKLEME
+# ---------------------------------------------------------------------
+youtube:
+  privacy: "private"          # ilk testte "private" (gizli). Test bitince "public" yapın.
+  category_id: "20"           # 20 = Oyun
+  daily_quota: 10000          # her Google Cloud projesinin günlük kotası
+  upload_cost: 1600           # bir yüklemenin kota maliyeti
+  quota_reserve: 300          # kontroller için ayrılan pay
+
+# ---------------------------------------------------------------------
+# KANALLAR
+# Yeni dil eklemek için: aşağıya bir blok kopyalayın, adını ve dilini değiştirin,
+# o kanal için OAuth dosyası ve filigran ekleyin. Bu kadar.
+# upload_windows: Türkiye saatiyle yükleme aralıkları.
+# ---------------------------------------------------------------------
+channels:
+  - name: "hindistan"
+    enabled: true
+    language: "hi"
+    hinglish: false           # true = Latin harfli Hinglish altyazı
+    upload_windows: ["17:00-20:00"]
+    daily_limit: 6
+    client_secret: "secrets/client_secrets/hindistan.json"
+    token: "secrets/tokens/hindistan.json"
+    watermark: "assets/watermarks/hindistan.png"
+
+  - name: "japonya"
+    enabled: true
+    language: "ja"
+    upload_windows: ["13:00-16:00"]
+    daily_limit: 6
+    client_secret: "secrets/client_secrets/japonya.json"
+    token: "secrets/tokens/japonya.json"
+    watermark: "assets/watermarks/japonya.png"
+
+  - name: "ispanyolca"
+    enabled: true
+    language: "es"
+    upload_windows: ["01:00-05:00"]
+    daily_limit: 6
+    client_secret: "secrets/client_secrets/ispanyolca.json"
+    token: "secrets/tokens/ispanyolca.json"
+    watermark: "assets/watermarks/ispanyolca.png"
+
+  - name: "brezilya"
+    enabled: true
+    language: "pt-BR"
+    upload_windows: ["00:00-03:00"]
+    daily_limit: 6
+    client_secret: "secrets/client_secrets/brezilya.json"
+    token: "secrets/tokens/brezilya.json"
+    watermark: "assets/watermarks/brezilya.png"
+
+# ---------------------------------------------------------------------
+# KORUMA / İZLEME
+# ---------------------------------------------------------------------
+guardian:
+  check_interval_s: 1800      # yüklenen videolar 30 dakikada bir kontrol edilir
+  heartbeat_timeout_s: 1200   # bir servis 20 dakika ses vermezse uyarı
+
+# ---------------------------------------------------------------------
+# TELEGRAM RAPOR
+# ---------------------------------------------------------------------
+telegram:
+  chat_id: ""                 # SETUP.md'deki adımla öğrenip buraya yazın (ör. "123456789")
+  daily_report_time: "10:00"  # Türkiye saati
