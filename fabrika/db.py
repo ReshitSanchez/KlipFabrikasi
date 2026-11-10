@@ -97,7 +97,6 @@ CREATE TABLE IF NOT EXISTS uploads (
     created_at REAL,
     uploaded_at REAL,
     last_checked_at REAL,
-    publish_at REAL,
     UNIQUE(clip_id, channel)
 );
 CREATE INDEX IF NOT EXISTS idx_uploads_status ON uploads(channel, status);
@@ -156,11 +155,30 @@ CREATE TABLE IF NOT EXISTS stats_snapshots (
     PRIMARY KEY(channel, day)
 );
 
+CREATE TABLE IF NOT EXISTS video_stats (
+    youtube_id TEXT PRIMARY KEY,
+    channel TEXT NOT NULL,
+    title TEXT,
+    views INTEGER,
+    avg_view_pct REAL,
+    avg_view_s REAL,
+    likes INTEGER,
+    subs_gained INTEGER,
+    updated_at REAL
+);
+
 CREATE TABLE IF NOT EXISTS kv (
     key TEXT PRIMARY KEY,
     value TEXT
 );
 """
+
+MIGRATIONS = [
+    ("uploads", "publish_at", "REAL"),
+    ("uploads", "comment_text", "TEXT"),
+    ("uploads", "comment_posted", "INTEGER DEFAULT 0"),
+    ("uploads", "playlist_added", "INTEGER DEFAULT 0"),
+]
 
 PACIFIC = ZoneInfo("America/Los_Angeles")
 
@@ -189,9 +207,11 @@ def init() -> None:
     conn = connect()
     try:
         conn.executescript(SCHEMA)
-        cols = {r[1] for r in conn.execute("PRAGMA table_info(uploads)")}
-        if "publish_at" not in cols:  # eski veritabanlarını güncelle
-            conn.execute("ALTER TABLE uploads ADD COLUMN publish_at REAL")
+        # eski veritabanlarını güncelle (yeni sütunlar)
+        for table, col, typ in MIGRATIONS:
+            cols = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
+            if col not in cols:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {typ}")
     finally:
         conn.close()
     _initialized = True

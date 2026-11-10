@@ -76,6 +76,37 @@ def channel_stats(ch: dict) -> dict:
     return out
 
 
+def video_analytics(ch: dict) -> dict | None:
+    """Son 28 günün video bazlı performansı (izlenme, ortalama izlenme yüzdesi). Sonuç video_stats'a yazılır;
+    en iyi başlıklar yapay zekâya örnek olarak verilir (kendi verimizden öğrenme döngüsü)."""
+    try:
+        ya = youtube_api.service(ch, "youtubeAnalytics", "v2")
+        end = datetime.now(db.local_tz())
+        rep = ya.reports().query(
+            ids="channel==MINE", startDate=(end - timedelta(days=28)).strftime("%Y-%m-%d"),
+            endDate=end.strftime("%Y-%m-%d"), dimensions="video", sort="-views", maxResults=50,
+            metrics="views,averageViewPercentage,averageViewDuration,likes,subscribersGained").execute()
+    except Exception as e:  # noqa: BLE001
+        log.debug("Video analizi alınamadı %s: %s", ch["name"], e)
+        return None
+    rows = rep.get("rows") or []
+    now = time.time()
+    tot_v, w_pct, best = 0, 0.0, None
+    for vid, views, pct, dur, likes, subs in rows:
+        u = db.one("SELECT title FROM uploads WHERE youtube_id=?", (vid,))
+        title = u["title"] if u else ""
+        db.execute("INSERT OR REPLACE INTO video_stats(youtube_id,channel,title,views,avg_view_pct,avg_view_s,likes,"
+                   "subs_gained,updated_at) VALUES(?,?,?,?,?,?,?,?,?)",
+                   (vid, ch["name"], title, int(views), float(pct), float(dur), int(likes), int(subs), now))
+        tot_v += int(views)
+        w_pct += float(pct) * int(views)
+        if best is None:
+            best = (title or vid, int(views), float(pct))
+    if not tot_v:
+        return None
+    return {"avg_pct": w_pct / tot_v, "best": best}
+
+
 def daily_report() -> str:
     now = datetime.now(db.local_tz())
     today = now.strftime("%Y-%m-%d")
@@ -113,6 +144,13 @@ def daily_report() -> str:
                 line += f"\n    ⚠️ istatistik alınamadı: {st['error']}"
             used, _ = db.quota_used(name)
             line += f"\n    📦 Kota: {used}/{config.get('youtube.daily_quota', 10000)}"
+            va = video_analytics(ch)
+            if va:
+                t, v, p = va["best"]
+                line += (f"\n    📈 Ort. izlenme oranı (28 gün): %{va['avg_pct']:.0f}"
+                         f"\n    🏆 En iyi: {t[:60]} ({v:,} izlenme, %{p:.0f})")
+                if va["avg_pct"] < 50:
+                    line += "\n    ⚠️ İzlenme oranı düşük: klipler kısaltılabilir (config: clip.target_max_seconds)"
         lines.append(line)
     clips = db.one("SELECT COUNT(*) AS c, SUM(status IN ('accepted','edited','editing')) AS a FROM clips "
                    "WHERE created_at>=?", (since,))

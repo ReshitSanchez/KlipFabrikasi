@@ -103,13 +103,13 @@ sunucuda rahat çalışır. Her gün kendiliğinden şu döngüyü yapar:
 
 | Saat (TR) | Ne olur |
 |---|---|
-| 20:00–02:00 | En büyük **1** yayını kaydeder. Yarın için yeterli klip (~8) bulununca kaydı **erken bitirir** |
+| 20:00–02:00 | En büyük **1** yayını kaydeder (kanal dillerinde yayın yapanlar öncelikli). Yarın için yeterli klip (~14) bulununca kaydı **erken bitirir** |
 | Gece boyunca | Klipleri puanlar, 4 dile çevirir, videoları hazırlar |
 | 05:00 | Bütün videoları (kanal başına 6) **tek seferde** YouTube'a yükler |
-| Gün içinde | YouTube her videoyu o ülkenin yoğun saatinde **kendisi** yayınlar (Hindistan 17–20, Japonya 13–16...) |
+| Gün içinde | YouTube her videoyu o ülkenin yoğun saatinde **kendisi** yayınlar (Hindistan 16–19, Japonya 11–14...) |
 | Geri kalan zaman | Sistem boşta bekler, akşam döngü tekrar başlar |
 
-Neden yeterli: Bir klip 4 kanalın hepsine gider. Yani günde 24 video için sadece **6–8 iyi klip**
+Neden yeterli: Bir klip 2 kanala gider. Yani günde 24 video için sadece **~12–14 iyi klip**
 gerekir. Bu da tek bir yayının 1–3 saatinden kolayca çıkar.
 
 **Hangi sunucu?** Hetzner Cloud'da sipariş edilebilen en ucuz paketlerden birini seçin.
@@ -378,6 +378,8 @@ diğerleri için `japonya`, `ispanyolca`, `brezilya` yazın.
 1. Gizli (incognito) tarayıcı penceresinde https://accounts.google.com/signup → yeni hesap açın
    (ör. kanal adına uygun bir Gmail).
 2. https://youtube.com → sağ üst → **Kanal oluştur**. Kanal adı ve logosunu o dile uygun seçin.
+   Araştırmaya göre **aranabilir** isimler daha iyi: `GTA 6 Hindi Clips`, `GTA6 切り抜き`,
+   `GTA 6 Momentos Épicos`, `GTA 6 Cortes BR` (birebir aynısı olmak zorunda değil).
 3. https://www.youtube.com/verify adresinden telefonla **doğrulayın** (15 dakikadan uzun video ve
    özel küçük resim için gerekli; ayrıca hesabın güvenilirliğini artırır).
 
@@ -531,10 +533,13 @@ Yükleme saatleri (Türkiye saati) `config.yaml` → her kanalın `upload_window
 
 | Kanal | Saat (TR) |
 |---|---|
-| Hindistan | 17:00–20:00 |
-| Japonya | 13:00–16:00 |
-| İspanyolca | 01:00–05:00 |
-| Brezilya | 00:00–03:00 |
+| Hindistan | 16:00–19:00 |
+| Japonya | 11:00–14:00 |
+| İspanyolca | 02:00–05:00 |
+| Brezilya | 21:00–24:00 |
+
+(Saatler araştırmaya göre yerel akşam tepe saatinden 1–3 saat önceye ayarlıdır. Ayrıntılar ve
+kaynaklar: [docs/ARASTIRMA.md](docs/ARASTIRMA.md))
 
 Toplu modda videolar sabah 05:00'te hep birlikte yüklenir ama **yukarıdaki saatlere kadar gizli
 kalır**; YouTube her birini bu saatlerde kendisi herkese açar. YouTube Studio'da bunları

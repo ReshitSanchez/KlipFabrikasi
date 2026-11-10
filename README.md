@@ -3,7 +3,8 @@
 GTA 6 (test için GTA 5) canlı yayınlarından **tamamen otomatik** olarak dikey kısa videolar (YouTube Shorts)
 üreten ve Hintçe, Japonca, İspanyolca, Portekizce kanallara yükleyen sistem.
 
-👉 **Kurulum için: [SETUP.md](SETUP.md)** (Türkçe, adım adım)
+👉 **Kurulum için: [SETUP.md](SETUP.md)** (Türkçe, adım adım)  
+🔎 **Araştırma ve kurgu/pazarlama kuralları: [docs/ARASTIRMA.md](docs/ARASTIRMA.md)**
 
 ## Nasıl çalışır?
 

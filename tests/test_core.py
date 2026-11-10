@@ -84,8 +84,12 @@ def test_ass_build_and_chunk():
     assert "HOLA" in ass and "Banner" in ass and "\\pos(540" in ass
     ja = subtitles.timed_tokens(segs, ["これはとても面白い瞬間ですね"], None, "ja")
     chunks = subtitles.chunk(ja, "ja")
-    assert all(sum(len(t["text"]) for t in ch) <= 12 for ch in chunks)
-    assert "Noto Sans CJK JP" in subtitles.build_ass(ja, "ja")
+    assert all(sum(len(t["text"]) for t in ch) <= 16 for ch in chunks)
+    ja_ass = subtitles.build_ass(ja, "ja")
+    assert "Noto Sans CJK JP" in ja_ass
+    assert "\\c&H" not in ja_ass  # Japonca: ifade bazlı telop, kelime vurgusu yok
+    assert "\\c&H" in ass and "\\t(0,100" in ass  # İspanyolca: kelime vurgusu + büyüme efekti
+    assert "&H50FF7F&" in subtitles.build_ass(toks, "es", highlight_color="&H0050FF7F")
 
 
 def test_upload_slots():
@@ -158,3 +162,13 @@ def test_batch_start():
     assert uploader.batch_start(datetime(2026, 11, 21, 4, 59, tzinfo=tz)) is None
     assert uploader.batch_start(datetime(2026, 11, 21, 7, 0, tzinfo=tz)).hour == 5
     assert uploader.batch_start(datetime(2026, 11, 21, 12, 0, tzinfo=tz)) is None
+
+
+def test_punch_in_and_targets():
+    from fabrika import editor, schedule
+
+    f = editor.punch_in_filter(10.0, 30.0)
+    assert "eval=frame" in f and "crop=1080:1920" in f
+    assert editor.punch_in_filter(None, 30.0) == ""
+    assert editor.punch_in_filter(29.9, 30.0) == ""
+    assert schedule.clips_target() == 14  # 4 kanal x 6 / 2 kanal-klip + 2

@@ -29,7 +29,7 @@ general:
 schedule:
   mode: "batch"
   record_windows: ["20:00-02:00"]   # Avrupa akşamı + Amerika öğleden sonrası: GTA yayınlarının yoğun saati
-  clips_per_day: 0                  # 0 = otomatik (en büyük günlük limit + 2). Her klip TÜM kanallara gider.
+  clips_per_day: 0                  # 0 = otomatik (kanalların günlük toplamı / channels_per_clip + 2)
   upload_time: "05:00"              # toplu yükleme saati (kurgu bitmemişse 6 saat boyunca tekrar dener)
 
 # ---------------------------------------------------------------------
@@ -79,6 +79,9 @@ streams:
   max_auto: 6                 # "auto" seçiliyse en fazla bu kadar
   min_viewers: 30             # bundan az izleyicili yayınlar alınmaz
   languages: []               # boş = tüm diller. Örn: ["en", "es"]
+  # Kanallarımızın dilinde (es, pt, ja, hi) yayın yapanlara öncelik ver. 1.0 = izleyici sayısını 2 kat say.
+  # Araştırma: Japonya, Latin Amerika ve Brezilya izleyicisi yerel yayıncıları çok daha fazla izliyor.
+  native_language_bonus: 1.0
   record_quality: "720p60,720p,best"
   segment_seconds: 300        # kayıtlar 5 dakikalık parçalara bölünür
   # Kara liste: bu yayıncılar asla kaydedilmez. Biçim: "platform:kullanıcıadı"
@@ -117,6 +120,9 @@ highlights:
 clip:
   min_seconds: 15
   max_seconds: 59
+  # İdeal uzunluk (araştırma: 18–35 sn klipler daha çok izleniyor). LLM bu aralığı hedefler.
+  target_min_seconds: 18
+  target_max_seconds: 35
 
 # ---------------------------------------------------------------------
 # KURGU
@@ -124,16 +130,24 @@ clip:
 editing:
   # normal = oyun ortada büyük, yayıncı kamerası bulunursa üstte
   # split  = üstte klip, altta assets/background/ içinden rastgele "tatmin edici" video
-  layout: "split"
+  # Araştırma: GTA klipleri zaten görsel olarak yoğun; altlık videosu oyunu küçülttüğü için "normal" önerilir.
+  layout: "normal"
   game_aspect: 1.25           # "normal" yerleşimde oyunun yanlardan ne kadar kırpılacağı
+  # Kanallar arası çeşitlilik: her klip en fazla bu kadar kanala gider (aynı klibin 4 kanalda birden
+  # yayınlanması spam / "tekrar kullanılan içerik" riskini artırır). 4 = her klip her kanala.
+  channels_per_clip: 2
+  punch_in:
+    enabled: true             # zirve anında hafif yakınlaştırma (dikkat çeker)
+    zoom: 1.12
+    seconds: 1.2
   preset: "veryfast"          # ffmpeg hızı
-  crf: 21                     # kalite (düşük = daha kaliteli, daha büyük dosya)
+  crf: 20                     # kalite (düşük = daha kaliteli, daha büyük dosya)
   fps: 30
   loudnorm: true              # ses seviyesini Shorts için dengele
   watermark_width: 220
   watermark_opacity: 0.85
   banner:
-    enabled: true             # ilk saniyelerde üstte kısa merak uyandıran yazı
+    enabled: true             # ilk saniyelerde üstte kısa bağlam/merak yazısı (ne oluyor, kim) - katma değer
     seconds: 3
   outro:
     enabled: false            # true ise assets/outro/<kanal>.mp4 sona eklenir
@@ -143,10 +157,15 @@ editing:
 # ---------------------------------------------------------------------
 subtitles:
   position_y: 1180            # 1920 yüksekliğinde dikey konum (960 = tam orta)
-  font_size: 92
+  font_size: 82
   max_words: 3                # bir seferde ekranda en fazla kaç kelime
   max_chars: 18
-  ja_max_chars: 10            # Japonca için bir satırdaki en fazla karakter
+  ja_max_chars: 14            # Japonca için bir satırdaki en fazla karakter
+  pop_animation: true         # o an söylenen kelime kısa bir "büyüme" efektiyle vurgulanır
+  # Japonya'da telop kültürü: kelime kelime değil, ifade ifade gösterilir
+  word_highlight:
+    default: true
+    ja: false
   uppercase_latin: true       # İspanyolca/Portekizce altyazıyı BÜYÜK HARF yap
   primary_color: "&H00FFFFFF" # beyaz (ASS renk biçimi &HAABBGGRR)
   highlight_color: "&H0000E1FF" # sarı-turuncu (o an söylenen kelime)
@@ -188,6 +207,12 @@ youtube:
   daily_quota: 10000          # her Google Cloud projesinin günlük kotası
   upload_cost: 1600           # bir yüklemenin kota maliyeti
   quota_reserve: 300          # kontroller için ayrılan pay
+  # Not: bazı kaynaklar yükleme maliyetinin Aralık 2025'te ~100 birime düştüğünü söylüyor (doğrulanmadı).
+  # Google Cloud Console > Kotalar ekranında gerçek kullanımı görürseniz upload_cost'u ona göre ayarlayın.
+  first_comment: true         # video yayınlanınca kanal, yerel dilde soru soran ilk yorumu yazar (50 birim)
+  playlist: true              # her kanal için otomatik oynatma listesi oluştur ve videoları ekle (50 birim)
+  trend_research: true        # günde bir kez her ülkenin en çok izlenen GTA Shorts başlıklarını inceler
+                              # (YOUTUBE_API_KEY projesinden ülke başına 100 birim)
 
 # ---------------------------------------------------------------------
 # KANALLAR
@@ -199,39 +224,67 @@ channels:
   - name: "hindistan"
     enabled: true
     language: "hi"
-    hinglish: false           # true = Latin harfli Hinglish altyazı
-    upload_windows: ["17:00-20:00"]
+    region: "IN"              # trend araştırması için ülke kodu
+    hinglish: true            # true = Latin harfli Hinglish altyazı (Hint gençlerinin yazdığı gibi)
+    upload_windows: ["16:00-19:00"]   # = 18:30–21:30 Hindistan saati
     daily_limit: 6
     client_secret: "secrets/client_secrets/hindistan.json"
     token: "secrets/tokens/hindistan.json"
     watermark: "assets/watermarks/hindistan.png"
+    highlight_color: "&H0000E1FF"     # sarı
+    hashtags: ["#gta6hindi", "#hindigaming"]
+    playlist_title: "GTA 6 Funny Moments Hindi"
+    title_style: >-
+      Write the title in Hinglish (Hindi in Latin script) keeping 2-3 English gaming words,
+      e.g. "GTA 6 mein ye kya ho gaya 😱". One emoji, curiosity without misleading clickbait.
 
   - name: "japonya"
     enabled: true
     language: "ja"
-    upload_windows: ["13:00-16:00"]
+    region: "JP"
+    upload_windows: ["11:00-14:00"]   # = 17:00–20:00 Japonya saati
     daily_limit: 6
     client_secret: "secrets/client_secrets/japonya.json"
     token: "secrets/tokens/japonya.json"
     watermark: "assets/watermarks/japonya.png"
+    highlight_color: "&H0000FFFF"
+    hashtags: ["#切り抜き", "#ゲーム実況"]
+    playlist_title: "GTA6 切り抜き"
+    title_style: >-
+      Write a short Japanese kirinuki-style title using 【GTA6】 at the start, natural slang
+      (ヤバすぎ, 神回, まさかの結末, ｗ), not a literal translation. At most one emoji.
 
   - name: "ispanyolca"
     enabled: true
     language: "es"
-    upload_windows: ["01:00-05:00"]
+    region: "MX"
+    upload_windows: ["02:00-05:00"]   # = 17:00–20:00 Meksika, 20:00–23:00 Arjantin
     daily_limit: 6
     client_secret: "secrets/client_secrets/ispanyolca.json"
     token: "secrets/tokens/ispanyolca.json"
     watermark: "assets/watermarks/ispanyolca.png"
+    highlight_color: "&H0000E1FF"
+    hashtags: ["#gta6español", "#momentosgraciosos"]
+    playlist_title: "GTA 6 Momentos Épicos"
+    title_style: >-
+      Neutral Latin American Spanish (no vosotros, no strong regionalisms), streamer tone,
+      e.g. "No puede ser lo que pasó en GTA 6 😂". One emoji, no misleading clickbait.
 
   - name: "brezilya"
     enabled: true
     language: "pt-BR"
-    upload_windows: ["00:00-03:00"]
+    region: "BR"
+    upload_windows: ["21:00-23:59"]   # = 15:00–18:00 Brezilya saati (akşam tepe saatinden önce)
     daily_limit: 6
     client_secret: "secrets/client_secrets/brezilya.json"
     token: "secrets/tokens/brezilya.json"
     watermark: "assets/watermarks/brezilya.png"
+    highlight_color: "&H0050FF7F"     # yeşil (kanallar arası görsel çeşitlilik)
+    hashtags: ["#cortes", "#gta6brasil"]
+    playlist_title: "GTA 6 Cortes BR"
+    title_style: >-
+      Brazilian Portuguese in the style of "cortes" channels, light slang (mano, kkkk),
+      e.g. "Olha o que aconteceu no GTA 6 kkkk". One emoji, no misleading clickbait.
 
 # ---------------------------------------------------------------------
 # KORUMA / İZLEME

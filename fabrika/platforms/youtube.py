@@ -54,3 +54,18 @@ def find_live(game: dict) -> list[dict]:
         })
     out.sort(key=lambda x: x["viewers"], reverse=True)
     return out
+
+
+def trending_short_titles(query: str, region: str, lang: str, days: int = 14, n: int = 15) -> list[str]:
+    """Bir ülkede son günlerde en çok izlenen kısa GTA videolarının başlıkları (100 birim)."""
+    from datetime import datetime, timedelta, timezone
+
+    after = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    r = requests.get(f"{API}/search", timeout=30, params={
+        "part": "snippet", "type": "video", "videoDuration": "short", "order": "viewCount",
+        "q": query, "regionCode": region, "relevanceLanguage": lang.split("-")[0],
+        "publishedAfter": after, "maxResults": n, "key": config.env("YOUTUBE_API_KEY")})
+    r.raise_for_status()
+    import html
+
+    return [html.unescape(i["snippet"]["title"]) for i in r.json().get("items", []) if i.get("snippet")]

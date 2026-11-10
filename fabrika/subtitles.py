@@ -122,16 +122,29 @@ def _bgr(color: str) -> str:
     return f"&H{hexpart.upper()}&"
 
 
+def word_highlight_on(lang: str) -> bool:
+    wh = config.get("subtitles.word_highlight", {}) or {}
+    if isinstance(wh, bool):
+        return wh
+    for k in (lang, base_lang(lang)):
+        if k in wh:
+            return bool(wh[k])
+    return bool(wh.get("default", True))
+
+
 def build_ass(tokens: list[dict], lang: str, hinglish: bool = False, banner: str | None = None,
-              banner_seconds: float = 3.0, text_watermark: str | None = None, clip_len: float = 60) -> str:
+              banner_seconds: float = 3.0, text_watermark: str | None = None, clip_len: float = 60,
+              highlight_color: str | None = None) -> str:
     sc = config.get("subtitles", {}) or {}
     font = font_for(lang, hinglish)
-    size = int(sc.get("font_size", 92))
+    size = int(sc.get("font_size", 82))
     if base_lang(lang) == "ja":
         size = int(size * 0.85)
     y = int(sc.get("position_y", 1180))
     prim = sc.get("primary_color", "&H00FFFFFF")
-    hl = _bgr(sc.get("highlight_color", "&H0000E1FF"))
+    hl = _bgr(highlight_color or sc.get("highlight_color", "&H0000E1FF"))
+    pop = bool(sc.get("pop_animation", True))
+    per_word = word_highlight_on(lang) or hinglish  # Japonca: ifade bazlı telop
     outline = sc.get("outline_color", "&H00000000")
     upper = bool(sc.get("uppercase_latin", True)) and (hinglish or lang in LATIN_UPPER or base_lang(lang) in LATIN_UPPER)
     ja = base_lang(lang) in ("ja", "zh")
@@ -146,7 +159,7 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Sub,{font},{size},{prim},&H000000FF,{outline},&H80000000,-1,0,0,0,100,100,0,0,1,7,3,5,60,60,0,1
+Style: Sub,{font},{size},{prim},&H000000FF,{outline},&H80000000,-1,0,0,0,100,100,0,0,1,7,3,5,100,100,0,1
 Style: Banner,{font},{int(size * 0.75)},&H00FFFFFF,&H000000FF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,3,18,0,8,60,60,0,1
 Style: Mark,{font},40,&H60FFFFFF,&H000000FF,&H80000000,&H00000000,-1,0,0,0,100,100,0,0,1,2,0,9,40,40,40,1
 
@@ -160,12 +173,21 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         chunk_end = ch[-1]["end"] + 0.25
         if ci + 1 < len(chunks):  # sonraki öbekle çakışmasın
             chunk_end = min(chunk_end, chunks[ci + 1][0]["start"])
+        if not per_word:
+            # İfade bazlı telop (Japonya): öbek tek parça, girişte kısa büyüme efekti
+            anim = "\\fscx108\\fscy108\\t(0,120,\\fscx100\\fscy100)" if pop else ""
+            if chunk_end - ch[0]["start"] >= 0.05:
+                lines.append(f"Dialogue: 1,{_ts(ch[0]['start'])},{_ts(chunk_end)},Sub,,0,0,0,,"
+                             f"{{\\an5\\pos(540,{y}){anim}}}{joiner.join(texts)}")
+            continue
         for i, t in enumerate(ch):
             start = t["start"]
             end = ch[i + 1]["start"] if i + 1 < len(ch) else chunk_end
             if end - start < 0.05:
                 continue
-            parts = [f"{{\\c{hl}\\fscx112\\fscy112}}{w}{{\\r}}" if j == i else w for j, w in enumerate(texts)]
+            active = (f"{{\\c{hl}\\fscx100\\fscy100\\t(0,100,\\fscx115\\fscy115)}}" if pop
+                      else f"{{\\c{hl}\\fscx112\\fscy112}}")
+            parts = [f"{active}{w}{{\\r}}" if j == i else w for j, w in enumerate(texts)]
             body = joiner.join(parts)
             lines.append(f"Dialogue: 1,{_ts(start)},{_ts(end)},Sub,,0,0,0,,{{\\an5\\pos(540,{y})}}{body}")
     if banner:

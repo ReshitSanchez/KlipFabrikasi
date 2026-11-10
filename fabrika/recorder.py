@@ -144,6 +144,11 @@ def tick() -> float:
         free_slots = limit - len(_active)
         cands = db.query("SELECT * FROM streams WHERE status='live' AND last_seen_at>? ORDER BY viewers DESC LIMIT 50",
                          (now - 900,))
+        # Kanallarımızın dilinde yayın yapanlara öncelik (yerel izleyici yerel yayıncıyı tercih ediyor)
+        bonus = float(config.get("streams.native_language_bonus", 1.0) or 0)
+        langs = {c["language"].split("-")[0].lower() for c in config.channels()}
+        cands = sorted(cands, key=lambda r: -(r["viewers"] or 0) * (
+            1 + bonus if (r["language"] or "").split("-")[0].lower() in langs else 1))
         for row in cands:
             if free_slots <= 0:
                 break

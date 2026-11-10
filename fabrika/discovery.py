@@ -62,6 +62,28 @@ def scan_platform(name: str, game: dict) -> int:
     return kept
 
 
+def trend_research(game: dict) -> None:
+    """Günde bir kez: her kanalın ülkesinde en çok izlenen GTA Shorts başlıklarını toplar.
+    Yapay zekâ başlık yazarken bunları stil örneği olarak kullanır (kopyalamaz)."""
+    if not config.get("youtube.trend_research", True) or not youtube.available():
+        return
+    day = time.strftime("%Y-%m-%d")
+    if db.kv_get("trend_day") == day:
+        return
+    db.kv_set("trend_day", day)
+    query = str(game.get("youtube_query", "GTA 6")).replace("live", "").strip() or "GTA"
+    for ch in config.channels():
+        region = ch.get("region")
+        if not region:
+            continue
+        try:
+            titles = youtube.trending_short_titles(query, region, ch["language"])
+            db.kv_set(f"trend_titles:{region}", db.dumps(titles[:10]))
+            log.info("Trend araştırması %s: %d başlık", region, len(titles))
+        except Exception as e:  # noqa: BLE001
+            log.warning("Trend araştırması başarısız (%s): %s", region, e)
+
+
 def tick() -> float:
     game = config.active_game()
     prev_mode = db.kv_get("game_mode")
@@ -70,6 +92,7 @@ def tick() -> float:
         if prev_mode is not None:
             db.alert(f"🎮 Kategori değişti: artık '{game['mode']}' ({game.get('twitch_name')}) taranıyor.",
                      level="info", key=f"mode-{game['mode']}", dedupe_hours=24 * 30)
+    trend_research(game)
     if not schedule.recording_allowed(lead_minutes=10):
         return 60  # toplu mod: kayıt saati değil ya da yarın için yeterli klip var
     now = time.time()

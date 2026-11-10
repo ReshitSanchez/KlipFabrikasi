@@ -143,9 +143,14 @@ You judge whether a clip from a stream will work as a standalone short for an in
 Score 1-10: 9-10 = extremely funny/shocking/epic, 7-8 = clearly entertaining, 4-6 = mildly interesting, 1-3 = boring.
 A clip that needs prior context to be understood (inside jokes, long unexplained situations) must get standalone=false.
 Chat reactions are a strong signal of what viewers found entertaining.
+What works best as Shorts (score higher): sudden surprises, the streamer shouting/laughing, crazy physics or bugs,
+chases, fails, unexpected endings, strong reactions{launch_note}.
+Score LOWER: long dialogue that needs context, inside jokes, wordplay that cannot be translated
+(the clip will be subtitled in Hindi, Japanese, Spanish and Portuguese), menus/loading screens, slow driving.
 Choose start/end (seconds, relative to clip start) so that:
- - something attention-grabbing happens within the first 2 seconds (no slow intro),
- - the payoff is included, and duration is between {min_s} and {max_s} seconds.
+ - the most attention-grabbing moment is visible or clearly coming within the first 1-2 seconds (no slow intro),
+ - the clip ends right after the payoff/reaction (do not let it fade out),
+ - duration is ideally {tmin}-{tmax} seconds (never below {min_s} or above {max_s}).
 Reply ONLY with JSON:
 {{"score": int, "category": "funny|surprising|interesting|epic|boring", "standalone": bool,
   "start": number, "end": number, "summary_en": "one sentence describing what happens", "reason": "short"}}"""
@@ -160,8 +165,26 @@ def score_clip(transcript: dict, chat_lines: list[str], meta: dict, clip_dur: fl
             + ("\n".join(tlines) if tlines else "(no speech detected)")
             + "\n\nChat messages around the moment ([seconds] message):\n"
             + ("\n".join(chat_lines[:60]) if chat_lines else "(no chat)"))
-    system = SCORE_SYSTEM.format(min_s=config.get("clip.min_seconds", 15), max_s=config.get("clip.max_seconds", 59))
+    system = SCORE_SYSTEM.format(min_s=config.get("clip.min_seconds", 15), max_s=config.get("clip.max_seconds", 59),
+                                 tmin=config.get("clip.target_min_seconds", 18),
+                                 tmax=config.get("clip.target_max_seconds", 35), launch_note=launch_note())
     return llm.chat_json(system, user, purpose="score", max_tokens=400)
+
+
+def launch_note() -> str:
+    """GTA 6 çıkışından sonraki ilk 2 hafta: ilk izlenim / ilk bug / ilk tepki anları çok aranır."""
+    from datetime import datetime, timedelta, timezone
+
+    g = config.get("game", {}) or {}
+    try:
+        sw = datetime.fromisoformat(str(g.get("switch_to_main_at")))
+    except ValueError:
+        return ""
+    now = datetime.now(timezone.utc)
+    if config.active_game()["mode"] == "main" and now - sw < timedelta(days=14):
+        return ("; this is GTA 6 launch week, so first impressions, first-time discoveries, "
+                "first bugs and amazed reactions to the new game are extra valuable")
+    return ""
 
 
 def fit_trim(start: float, end: float, dur: float, peak: float) -> tuple[float, float]:

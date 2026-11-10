@@ -71,7 +71,8 @@ def dry_run_copy(u, ch: dict) -> None:
     base = dst / f"clip_{u['clip_id']}"
     shutil.copy2(u["video_path"], base.with_suffix(".mp4"))
     base.with_suffix(".txt").write_text(
-        f"BAŞLIK:\n{u['title']}\n\nAÇIKLAMA:\n{u['description']}\n\nETİKETLER:\n{', '.join(json.loads(u['tags'] or '[]'))}\n",
+        f"BAŞLIK:\n{u['title']}\n\nAÇIKLAMA:\n{u['description']}\n\nETİKETLER:\n{', '.join(json.loads(u['tags'] or '[]'))}\n"
+        f"\nİLK YORUM:\n{u['comment_text'] or '-'}\n",
         encoding="utf-8")
     db.execute("UPDATE uploads SET status='dry_run', uploaded_at=? WHERE id=?", (time.time(), u["id"]))
     log.info("[DENEME] %s -> %s", ch["name"], base.with_suffix(".mp4"))
@@ -139,8 +140,70 @@ def upload(u, ch: dict, publish_at: datetime | None = None) -> None:
     db.channel_ok(name)
     when = f", yayın saati {publish_at:%d.%m %H:%M}" if publish_at else ""
     log.info("YÜKLENDİ %s: https://youtube.com/shorts/%s (%s%s)", name, vid, got_privacy, when)
+    add_to_playlist(ch, vid, u["id"])
     if privacy == "public" and got_privacy != "public" and not publish_at:
         warn_privacy_lock(name)
+
+
+def _extra_quota_ok(name: str, units: int = 50) -> bool:
+    """Ek işlemler (playlist, yorum) yüklemelerin kotasını yemesin."""
+    return db.quota_remaining(name) >= units + int(config.get("youtube.quota_reserve", 300))
+
+
+def ensure_playlist(ch: dict, yt) -> str | None:
+    key = f"playlist:{ch['name']}"
+    pid = db.kv_get(key)
+    if pid:
+        return pid
+    if not _extra_quota_ok(ch["name"]):
+        return None
+    title = ch.get("playlist_title") or f"GTA 6 Shorts ({ch['language']})"
+    resp = yt.playlists().insert(part="snippet,status", body={
+        "snippet": {"title": title[:150], "defaultLanguage": ch["language"]},
+        "status": {"privacyStatus": "public"}}).execute()
+    db.quota_add(ch["name"], 50)
+    db.kv_set(key, resp["id"])
+    log.info("Oynatma listesi oluşturuldu: %s (%s)", title, ch["name"])
+    return resp["id"]
+
+
+def add_to_playlist(ch: dict, video_id: str, upload_id: int) -> None:
+    if not config.get("youtube.playlist", True) or not video_id:
+        return
+    try:
+        yt = youtube_api.service(ch)
+        pid = ensure_playlist(ch, yt)
+        if not pid or not _extra_quota_ok(ch["name"]):
+            return
+        yt.playlistItems().insert(part="snippet", body={"snippet": {
+            "playlistId": pid, "resourceId": {"kind": "youtube#video", "videoId": video_id}}}).execute()
+        db.quota_add(ch["name"], 50)
+        db.execute("UPDATE uploads SET playlist_added=1 WHERE id=?", (upload_id,))
+    except Exception as e:  # noqa: BLE001 - ek özellik; hata yüklemeyi bozmasın
+        log.warning("Oynatma listesine eklenemedi (%s): %s", ch["name"], e)
+
+
+def post_first_comments() -> None:
+    """Video herkese açık olduktan sonra kanal, yerel dilde soru soran ilk yorumu yazar."""
+    if not config.get("youtube.first_comment", True) or config.get("youtube.privacy") != "public":
+        return
+    now = time.time()
+    rows = db.query("SELECT * FROM uploads WHERE status='uploaded' AND youtube_id IS NOT NULL AND "
+                    "COALESCE(comment_posted,0)=0 AND COALESCE(comment_text,'')<>'' AND uploaded_at>? AND "
+                    "(publish_at IS NULL OR publish_at<=?) LIMIT 5", (now - 3 * 86400, now - 120))
+    for u in rows:
+        ch = config.channel(u["channel"])
+        if not ch or not db.channel_enabled(ch["name"]) or not _extra_quota_ok(ch["name"]):
+            continue
+        try:
+            youtube_api.service(ch).commentThreads().insert(part="snippet", body={"snippet": {
+                "videoId": u["youtube_id"],
+                "topLevelComment": {"snippet": {"textOriginal": u["comment_text"]}}}}).execute()
+            db.quota_add(ch["name"], 50)
+            db.execute("UPDATE uploads SET comment_posted=1 WHERE id=?", (u["id"],))
+        except Exception as e:  # noqa: BLE001
+            log.warning("İlk yorum yazılamadı (%s/%s): %s", u["channel"], u["youtube_id"], e)
+            db.execute("UPDATE uploads SET comment_posted=-1 WHERE id=?", (u["id"],))
 
 
 def warn_privacy_lock(name: str) -> None:
@@ -213,6 +276,8 @@ def batch_tick(now: datetime) -> None:
 def tick() -> float:
     now = datetime.now(db.local_tz())
     dry = bool(config.get("general.dry_run", True))
+    if not dry:
+        post_first_comments()
     if schedule.is_batch() and not dry:
         batch_tick(now)
         return 30

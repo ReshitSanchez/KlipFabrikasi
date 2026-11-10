@@ -47,8 +47,11 @@ def clips_target() -> int:
     t = int(config.get("schedule.clips_per_day", 0) or 0)
     if t > 0:
         return t
-    limits = [int(c.get("daily_limit", 6)) for c in config.channels()] or [6]
-    return max(limits) + 2
+    chans = config.channels()
+    total = sum(int(c.get("daily_limit", 6)) for c in chans) or 6
+    per = int(config.get("editing.channels_per_clip", 2) or 0)
+    per = per if 0 < per < len(chans) else max(1, len(chans))
+    return -(-total // per) + 2  # yukarı yuvarla
 
 
 def clips_ready() -> int:
