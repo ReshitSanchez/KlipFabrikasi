@@ -120,9 +120,14 @@ Son iki komut bir sürüm numarası yazdırıyorsa kurulum tamam. ✅
 
 ```bash
 cd /root
-git clone https://github.com/KULLANICI_ADINIZ/KlipFabrikas-.git klipfabrikasi
+git clone https://github.com/KULLANICI_ADINIZ/KlipFabrikasi.git klipfabrikasi
 cd klipfabrikasi
 ```
+
+> ℹ️ Deponun adı GitHub'da hâlâ `KlipFabrikas-` ise (sonda tire), önce GitHub'da adını
+> `KlipFabrikasi` olarak değiştirin: depo sayfası → **Settings** → **General** → *Repository name* →
+> `KlipFabrikasi` → **Rename**. Değiştirmek istemezseniz komutta `KlipFabrikasi.git` yerine
+> `KlipFabrikas-.git` yazın.
 
 > 🔒 Depo **gizli (private)** ise kullanıcı adı ve şifre sorar. Şifre yerine GitHub'dan bir
 > **Personal Access Token** girmeniz gerekir: GitHub → sağ üst profil → *Settings* → *Developer settings* →
